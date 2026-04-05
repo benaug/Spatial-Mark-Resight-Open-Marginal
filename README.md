@@ -1,2 +1,32 @@
 # Spatial-Mark-Resight-Open-Marginal
-Open population SMR samplers marginalizing out latent individual IDs 
+Jolly-Seber spatial mark-resight samplers marginalizing out latent individual IDs and integrated telemetry survival 
+
+This model is an SMR version of the Jolly-Seber model here (JS-SCR-Dcov):
+
+https://github.com/benaug/Jolly-Seber-N-Prior-DA
+
+It also has allows integrated telemetry survival data, see here for an SCR version:
+
+https://github.com/benaug/Spatial-IPM-Telemetry
+
+The SMR model comes from the marginal SMR models here:
+
+https://github.com/benaug/Spatial-Mark-Resight-Marginal
+
+This model considers sample types: marked with ID, marked with no ID, unmarked, unknown marked status. To speed up computation, it uses
+the approach of Herliansyah et al. (2024, section 4.3) in the custom N/z and activity center updates.
+
+https://link.springer.com/article/10.1007/s13253-023-00598-3
+
+
+Currently, I assume 1) the mark status does not change within a primary occasion (no interspersed marking and resighting), and 
+2) the mark status of all marked individuals is known in all years. This likely limits us to marks that are telemetry (GPS) collars.
+Marked individuals can carry their marks across years, but I currently assume mark loss/censoring is uninformative. 
+
+The model can be modified for some unknown mark status scenarios. For example, a telemetry collar can die, so you wouldn't know that
+individual is still in the population, but you may resight it and know it must be one of the marked individuals. So individuals with
+dead collars would produce all "marked with  no ID" sample types.
+
+The model currently assumes there is a marking and resighting process in every primary occasion. You can modify the effort for each, but
+currently you must include at least one occasion of each process in each year. The next thing I will do is to set it up to allow
+arbitrary combinations of marking and resighting like is done in the Sapatial-IPM-Telemetry repo for 2 SCR processes.
