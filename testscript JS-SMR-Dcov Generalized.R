@@ -163,7 +163,9 @@ data <- sim.JS.SMR.Dcov.Generalized(D.beta0=D.beta0,D.beta1=D.beta1,D.cov=D.cov,
 # str(data$locs) #telemetry locations: max(n.marked[1:n.year]) x n.year x n.tel.locs x 2
 
 data$N #yearly abundance
-colSums(apply(data$y.mark>0,c(1,2),sum)>0) #marks deployed per year
+colSums(apply(data$y.mark>0,c(1,2),sum)>0) #marks deployed per year 
+#(actually this ^ is only true if mark.protocol=2, will over count with 
+#mark.protocol=1, need to fix that, but not important for fitting model)
 data$n.marked #marks active per year
 
 #total detected individuals
