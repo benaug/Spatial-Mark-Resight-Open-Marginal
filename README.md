@@ -28,4 +28,5 @@ individual is still in the population, but you may resight it and know it must b
 dead collars would produce all "marked with  no ID" sample types.
 
 Code is now set up so that each year can have marking effort, sighting effort, both, or neither. The only requirement is that
-there is at least one marking and sighting session.
+there is at least one marking and sighting session. Scenario set up in test script has been evaluated with 100 simulated data sets. 
+With little marking effort mixing is worse. 25K iterations were sufficient and it took 2 hours on average to run on 2.2 GHz cpu.
