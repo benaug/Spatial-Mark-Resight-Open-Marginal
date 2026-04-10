@@ -436,7 +436,7 @@ methods <- ifelse(K.mark > 0 & K.sight > 0, "M-S",
 
 library(vioplot)
 vioplot(mvSamples[-c(1:500),3:(n.year+2)],ylim=c(0,200),
-        xlim=c(-0.5,n.year+0.5),ylab="Abundance")
+        xlim=c(-0.5,n.year+0.5),ylab="Abundance",line=3)
 mtext("Method(s) Used",3,at=0,line=2)
 mtext(methods,3,at=1:n.year,line=2)
 mtext("marks deployed",3,at=0,line=1)
