@@ -27,6 +27,5 @@ The model can be modified for some unknown mark status scenarios. For example, a
 individual is still in the population, but you may resight it and know it must be one of the marked individuals. So individuals with
 dead collars would produce all "marked with  no ID" sample types.
 
-The model currently assumes there is a marking and resighting process in every primary occasion. You can modify the effort for each, but
-currently you must include at least one occasion of each process in each year. The next thing I will do is to set it up to allow
-arbitrary combinations of marking and resighting like is done in the Sapatial-IPM-Telemetry repo for 2 SCR processes.
+Code is now set up so that each year can have marking effort, sighting effort, both, or neither. The only requirement is that
+there is at least one marking and sighting session.
