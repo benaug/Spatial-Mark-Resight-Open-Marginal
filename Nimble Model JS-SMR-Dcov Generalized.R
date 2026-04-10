@@ -52,56 +52,101 @@ NimModel <- nimbleCode({
     tel.z.states[i,1:n.year] ~ dSurvivalTel(z=z[i,1:n.year],z.super=z.super[i])
   }
   
-  ##Detection##
-  for(g in 1:n.year){
+  ##Observation Model##
+  #sample type observation model priors (Dirichlet), fixed across years
+  alpha.marked[1] <- 1
+  alpha.marked[2] <- 1
+  alpha.marked[3] <- 1
+  alpha.unmarked[1] <- 1
+  alpha.unmarked[2] <- 1
+  theta.marked[1:3] ~ ddirch(alpha.marked[1:3])
+  theta.unmarked[1] <- 0
+  theta.unmarked[2:3] ~ ddirch(alpha.unmarked[1:2])
+  sigma.fixed ~ dunif(0,10)
+  for(g in 1:n.year){ #sigma informed by data except in years with no capture effort and no telemetry
+    # sigma[g] ~ dunif(0,10) #sigma varies by year, shared across methods
+    sigma[g] <- sigma.fixed #sigma fixed across years, shared across methods
+  }
+  #marking process
+  for(g in 1:n.mark.years){
     p0[g] ~ dunif(0,1) #p0 varies by year
-    lam0[g] ~ dunif(0,1) #lam0 varies by year
-    sigma[g] ~ dunif(0,10) #sigma varies by year
-    #sample type observation model priors (Dirichlet), vary by year
-    alpha.marked[g,1] <- 1
-    alpha.marked[g,2] <- 1
-    alpha.marked[g,3] <- 1
-    alpha.unmarked[g,1] <- 1
-    alpha.unmarked[g,2] <- 1
-    theta.marked[g,1:3] ~ ddirch(alpha.marked[g,1:3])
-    theta.unmarked[g,1] <- 0
-    theta.unmarked[g,2:3] ~ ddirch(alpha.unmarked[g,1:2])
     for(i in 1:M){
-      lam[i,g,1:J.sight[g]] <- GetDetectionRate(s = s[i,1:2], X=X.sight[g,1:J.sight[g],1:2], J=J.sight[g],sigma=sigma[g], lam0=lam0[g],
-                                          z=z[i,g],z.super=z.super[i])
-      pd[i,g,1:J.mark[g]] <- GetDetectionProb(s=s[i,1:2],X=X.mark[g,1:J.mark[g],1:2],J=J.mark[g],sigma=sigma[g],p0=p0[g],
-                                              z=z[i,g],z.super=z.super[i])
-      y.mark[i,g,1:J.mark[g]] ~ dBinomialVector(pd[i,g,1:J.mark[g]],K1D=K1D.mark[g,1:J.mark[g]],z=z[i,g],z.super=z.super[i])
+      pd[i,mark.years[g],
+         1:J.mark[mark.years[g]]] <- GetDetectionProb(s=s[i,1:2],
+                                                      X=X.mark[mark.years[g],1:J.mark[mark.years[g]],1:2],
+                                                      J=J.mark[mark.years[g]],sigma=sigma[mark.years[g]],
+                                                      p0=p0[g],z=z[i,mark.years[g]],
+                                                      z.super=z.super[i])
+      y.mark[i,mark.years[g],
+             1:J.mark[mark.years[g]]] ~ dBinomialVector(pd[i,mark.years[g],1:J.mark[mark.years[g]]],
+                                                        K1D=K1D.mark[mark.years[g],1:J.mark[mark.years[g]]],
+                                                        z=z[i,mark.years[g]],z.super=z.super[i])
     }
-    for(i in 1:n.marked.all){
-      y.mID[i,g,1:J.sight[g]] ~ dPoissonVector(lam=lam[i,g,1:J.sight[g]]*K1D.sight[g,1:J.sight[g]]*theta.marked[g,1],
-                                         z=z[i,g],z.super=z.super[i],mark.states=mark.states[i,g]) #marked and identified detections
+  }
+  #sighting process
+  for(g in 1:n.sight.years){
+    lam0[g] ~ dunif(0,1) #lam0 varies by year
+    for(i in 1:M){
+      lam[i,sight.years[g],
+          1:J.sight[sight.years[g]]] <- GetDetectionRate(s=s[i,1:2],
+                                                         X=X.sight[sight.years[g],1:J.sight[sight.years[g]],1:2],
+                                                         J=J.sight[sight.years[g]],sigma=sigma[sight.years[g]],
+                                                         lam0=lam0[g],z=z[i,sight.years[g]],
+                                                         z.super=z.super[i])
+      
+    }
+    for(i in 1:n.marked.all){ #marked and identified detections
+      y.mID[i,sight.years[g],
+            1:J.sight[sight.years[g]]] ~ dPoissonVector(lam=lam[i,sight.years[g],1:J.sight[sight.years[g]]]*
+                                                          K1D.sight[sight.years[g],1:J.sight[sight.years[g]]]*
+                                                          theta.marked[1],
+                                                        z=z[i,sight.years[g]],z.super=z.super[i],
+                                                        mark.states=mark.states[i,sight.years[g]])
     }
     #Unidentified detections by type
     #1 marked with no ID detections
     #sum up lambda contributions of marked individuals when they are marked
-    bigLam.marked[g,1:J.sight[g]] <- GetbigLam(lam=lam[1:n.marked.all,g,1:J.sight[g]],
-                                         z=z[1:n.marked.all,g]*mark.states[1:n.marked.all,g])
-    lam.mnoID[g,1:J.sight[g]] <- bigLam.marked[g,1:J.sight[g]]*K1D.sight[g,1:J.sight[g]]*theta.marked[g,2]
-    y.mnoID[g,1:J.sight[g]] ~ dPoissonVector(lam.mnoID[g,1:J.sight[g]],z=1,z.super=1,mark.states=1) #plug in z,z.super=1 to reuse dPoissonVector
-
+    bigLam.marked[sight.years[g],
+                  1:J.sight[sight.years[g]]] <- GetbigLam(lam=lam[1:n.marked.all,sight.years[g],1:J.sight[sight.years[g]]],
+                                                          z=z[1:n.marked.all,sight.years[g]]*
+                                                            mark.states[1:n.marked.all,sight.years[g]])
+    lam.mnoID[sight.years[g],
+              1:J.sight[sight.years[g]]] <- bigLam.marked[sight.years[g],1:J.sight[sight.years[g]]]*
+      K1D.sight[sight.years[g],1:J.sight[sight.years[g]]]*
+      theta.marked[2]
+    y.mnoID[sight.years[g],
+            1:J.sight[sight.years[g]]] ~ dPoissonVector(lam.mnoID[sight.years[g],1:J.sight[sight.years[g]]],
+                                                        z=1,z.super=1,mark.states=1) #plug in z,z.super=1 to reuse dPoissonVector
+    
     #2 unmarked detections
     #sum up lambda contributions of always unmarked individuals and marked individuals in years not marked
-    bigLam.unmarked[g,1:J.sight[g]] <- GetbigLam(lam=lam[1:M,g,1:J.sight[g]],z=z.super[1:M]*z[1:M,g]*(1-mark.states[1:M,g]))
-    lam.um[g,1:J.sight[g]] <- bigLam.unmarked[g,1:J.sight[g]]*K1D.sight[g,1:J.sight[g]]*theta.unmarked[g,2]
-    y.um[g,1:J.sight[g]] ~ dPoissonVector(lam.um[g,1:J.sight[g]],z=1,z.super=1,mark.states=1) #plug in z,z.super=1 to reuse dPoissonVector
-
-    #3 unknown marked status
-    lam.unk[g,1:J.sight[g]] <- bigLam.marked[g,1:J.sight[g]]*K1D.sight[g,1:J.sight[g]]*theta.marked[g,3] +
-      bigLam.unmarked[g,1:J.sight[g]]*K1D.sight[g,1:J.sight[g]]*theta.unmarked[g,3]
-    y.unk[g,1:J.sight[g]] ~ dPoissonVector(lam.unk[g,1:J.sight[g]],z=1,z.super=1,mark.states=1) #plug in z,z.super=1 to reuse dPoissonVector
+    bigLam.unmarked[sight.years[g],
+                    1:J.sight[sight.years[g]]] <- GetbigLam(lam=lam[1:M,sight.years[g],1:J.sight[sight.years[g]]],
+                                                            z=z.super[1:M]*z[1:M,sight.years[g]]*
+                                                              (1-mark.states[1:M,sight.years[g]]))
+    lam.um[sight.years[g],
+           1:J.sight[sight.years[g]]] <- bigLam.unmarked[sight.years[g],1:J.sight[sight.years[g]]]*
+      K1D.sight[sight.years[g],1:J.sight[sight.years[g]]]*
+      theta.unmarked[2]
+    y.um[sight.years[g],
+         1:J.sight[sight.years[g]]] ~ dPoissonVector(lam.um[sight.years[g],1:J.sight[sight.years[g]]],
+                                                     z=1,z.super=1,mark.states=1) #plug in z,z.super=1 to reuse dPoissonVector
     
-    #If you have telemetry in every year
-    for(i in 1:n.tel.inds[g]){
-      for(m in 1:n.locs.ind[i,g]){
-        locs[i,g,m,1] ~ dnorm(s[tel.inds[i,g],1],sd=sigma[g])
-        locs[i,g,m,2] ~ dnorm(s[tel.inds[i,g],2],sd=sigma[g])
-      }
+    #3 unknown marked status
+    lam.unk[sight.years[g],
+            1:J.sight[sight.years[g]]] <- bigLam.marked[sight.years[g],1:J.sight[sight.years[g]]]*
+      K1D.sight[sight.years[g],1:J.sight[sight.years[g]]]*theta.marked[3] + 
+      bigLam.unmarked[sight.years[g],1:J.sight[sight.years[g]]]*
+      K1D.sight[sight.years[g],1:J.sight[sight.years[g]]]*theta.unmarked[3]
+    y.unk[sight.years[g],
+          1:J.sight[sight.years[g]]] ~ dPoissonVector(lam.unk[sight.years[g],1:J.sight[sight.years[g]]],
+                                                      z=1,z.super=1,mark.states=1) #plug in z,z.super=1 to reuse dPoissonVector
+  }
+  #Telemetry informs activity centers and sigma
+  for(i in 1:n.tel.inds){
+    for(g in 1:n.tel.years[i]){
+      locs[i,g,1:n.locs.ind[i,g],1:2] ~ dNormVector(s=s[tel.ID[i],1:2],sigma=sigma[tel.year[i,g]],
+                                                    n.locs.ind=n.locs.ind[i,g])
     }
   }
 })

@@ -37,7 +37,8 @@ init.SMR.Dcov.Open.Generalized <- function(data,inits=NA,M=NA){
   y.unk <- data$y.unk
   
   #reformat these
-  ID.marked <- tel.inds <- matrix(0,max(n.marked),n.year)
+  # tel.inds <- matrix(0,max(n.marked),n.year)
+  ID.marked <- matrix(0,max(n.marked),n.year)
   X.mark <- array(0,dim=c(n.year,J.mark.max,2))
   K1D.mark <- matrix(0,n.year,J.mark.max)
   X.sight <- array(0,dim=c(n.year,J.sight.max,2))
@@ -45,7 +46,7 @@ init.SMR.Dcov.Open.Generalized <- function(data,inits=NA,M=NA){
   for(g in 1:n.year){
     if(n.marked[g]>0){
       ID.marked[1:n.marked[g],g] <- data$ID.marked[[g]]
-      tel.inds[1:n.marked[g],g] <- data$tel.inds[[g]]
+      # tel.inds[1:n.marked[g],g] <- data$tel.inds[[g]]
     }
     X.mark[g,1:J.mark[g],1:2] <- data$X.mark[[g]]
     K1D.mark[g,1:J.mark[g]] <- data$K1D.mark[[g]]
@@ -62,75 +63,68 @@ init.SMR.Dcov.Open.Generalized <- function(data,inits=NA,M=NA){
   sigma <- inits$sigma
   #assign random locations to assign latent ID samples to individuals
   s.init <- cbind(runif(M,xlim[1],xlim[2]), runif(M,ylim[1],ylim[2]))
+  
   #but update s.inits for marked individuals before assigning latent detections
-  idx <- which(rowSums(y.mID)>0)
+  has.mark <- apply(y.mark[1:n.marked.all,,],1,sum)>0
+  has.mID <- rowSums(y.mID)>0
+  has.tel <- (1:n.marked.all)%in%data$tel.ID
+  idx <- which(has.mark|has.mID|has.tel)
+  
   for(i in idx){
     trps <- matrix(0,nrow=0,ncol=2) #get locations of traps of capture across years for ind i
     for(g in 1:n.year){
       if(sum(y.mark[i,g,])>0){
-        trps.g <- matrix(X.mark[g,which(y.mark[i,g,]>0),],ncol=2,byrow=FALSE)
+        trps.g <- matrix(X.mark[g,which(y.mark[i,g,]>0),,drop=FALSE],ncol=2,byrow=FALSE)
         trps <- rbind(trps,trps.g)
       }
       if(sum(y.mID[i,g,])>0){
-        trps.g <- matrix(X.sight[g,which(y.mID[i,g,]>0),],ncol=2,byrow=FALSE)
+        trps.g <- matrix(X.sight[g,which(y.mID[i,g,]>0),,drop=FALSE],ncol=2,byrow=FALSE)
         trps <- rbind(trps,trps.g)
       }
     }
+    if(i%in%data$tel.ID){
+      these.locs <- matrix(0,nrow=0,ncol=2) #get telemetry locs across years for tel.ID i
+      this.tel.ind <- which(data$tel.ID==i)
+      for(g in 1:data$n.tel.years[this.tel.ind]){
+        if(data$n.locs.ind[this.tel.ind,g]>0){
+          locs.g <- matrix(data$locs[this.tel.ind,g,1:data$n.locs.ind[this.tel.ind,g],,drop=FALSE],
+                           ncol=2,byrow=FALSE)
+          these.locs <- rbind(these.locs,locs.g)
+        }
+      }
+      trps <- rbind(trps,these.locs)
+    }
     if(nrow(trps)>1){
       s.init[i,] <- c(mean(trps[,1]),mean(trps[,2]))
-    }else{
+    }else if(nrow(trps)==1){
       s.init[i,] <- trps
     }
   }
-  #update using telemetry if you have it
-  if(!is.null(dim(data$locs))){
-    n.tel.inds <- colSums(tel.inds>0)
-    n.locs.ind <- matrix(0,max(n.tel.inds),n.year)
-    for(g in 1:n.year){
-      for(i in 1:n.tel.inds[g]){
-        n.locs.ind[i,g]  <- sum(!is.na(locs[i,g,,1]))
-      }
+  #in case s.init exactly on state space boundary
+  eps <- 1e-5
+  s.init[,1][s.init[,1]<xlim[1]] <- xlim[1] + eps
+  s.init[,1][s.init[,1]>xlim[2]] <- xlim[2] - eps
+  s.init[,2][s.init[,2]<ylim[1]] <- ylim[1] + eps
+  s.init[,2][s.init[,2]>ylim[2]] <- ylim[2] - eps
+  
+  #If using a habitat mask, move any s's initialized in non-habitat above to closest habitat
+  e2dist  <-  function (x, y){
+    i <- sort(rep(1:nrow(y), nrow(x)))
+    dvec <- sqrt((x[, 1] - y[i, 1])^2 + (x[, 2] - y[i, 2])^2)
+    matrix(dvec, nrow = nrow(x), ncol = nrow(y), byrow = F)
+  }
+  getCell  <-  function(s,res,cells){
+    cells[trunc(s[1]/res)+1,trunc(s[2]/res)+1]
+  }
+  alldists <- e2dist(s.init,data$dSS)
+  alldists[,data$InSS==0] <- Inf
+  for(i in 1:M){
+    this.cell <- data$cells[trunc(s.init[i,1]/data$res)+1,trunc(s.init[i,2]/data$res)+1]
+    if(data$InSS[this.cell]==0){
+      cands <- alldists[i,]
+      new.cell <- which(alldists[i,]==min(alldists[i,]))
+      s.init[i,] <- data$dSS[new.cell,]
     }
-    
-    print("using telemetry to initialize telemetered s. Remove from data if not using in the model.")
-    #update using telemetry if you have it
-    tel.inds.all <- sort(unique(c(tel.inds)))
-    idx <- which(tel.inds.all==0)
-    if(length(idx)>0){
-      tel.inds.all <- tel.inds.all[-idx]
-    }
-    
-    for(i in tel.inds.all){
-      locs.i <- matrix(0,nrow=0,ncol=2) #get locations of traps of capture across years for ind i
-      for(g in 1:n.year){
-        i.idx.this.g <- which(tel.inds[,g]==i)
-        if(length(i.idx.this.g)>0){
-          locs.g <- locs[i.idx.this.g,g,,]
-          locs.i <- rbind(locs.i,locs.g)
-        }
-      }
-      if(nrow(locs.i)>1){
-        s.init[i,] <- colMeans(locs.i)
-      }else{
-        s.init[i,] <- locs.i
-      }
-      #make sure s is in state space
-      if(s.init[i,1]<xlim[1]){
-        s.init[i,1] <- xlim[1] + 0.01
-      }
-      if(s.init[i,1]>xlim[2]){
-        s.init[i,1] <- xlim[2] - 0.01
-      }
-      if(s.init[i,2]<ylim[1]){
-        s.init[i,2] <- ylim[1] + 0.01
-      }
-      if(s.init[i,2]>ylim[2]){
-        s.init[i,2] <- ylim[2] - 0.01
-      }
-    }
-  }else{
-    tel.inds <- NA
-    n.locs.ind <- NA
   }
   
   y.true <- array(0,dim=c(M,n.year,J.sight.max))
@@ -157,29 +151,6 @@ init.SMR.Dcov.Open.Generalized <- function(data,inits=NA,M=NA){
       y.true[,g,j] <- y.true[,g,j] + rmultinom(1,y.unk[g,j],prob=prob)
     }
   }
-  
-  #If using a habitat mask, move any s's initialized in non-habitat above to closest habitat
-  e2dist  <-  function (x, y){
-    i <- sort(rep(1:nrow(y), nrow(x)))
-    dvec <- sqrt((x[, 1] - y[i, 1])^2 + (x[, 2] - y[i, 2])^2)
-    matrix(dvec, nrow = nrow(x), ncol = nrow(y), byrow = F)
-  }
-  getCell  <-  function(s,res,cells){
-    cells[trunc(s[1]/res)+1,trunc(s[2]/res)+1]
-  }
-  alldists <- e2dist(s.init,data$dSS)
-  alldists[,data$InSS==0] <- Inf
-  for(i in 1:M){
-    this.cell <- data$cells[trunc(s.init[i,1]/data$res)+1,trunc(s.init[i,2]/data$res)+1]
-    if(data$InSS[this.cell]==0){
-      cands <- alldists[i,]
-      new.cell <- which(alldists[i,]==min(alldists[i,]))
-      s.init[i,] <- data$dSS[new.cell,]
-    }
-  }
-  
-  #initialize z, start with possibly true detection history
-  
   #initialize z, start with observed guys
   z.init <- matrix(0,M,n.year)
   z.start.init <- z.stop.init <- rep(0,M)
@@ -276,9 +247,9 @@ init.SMR.Dcov.Open.Generalized <- function(data,inits=NA,M=NA){
   return(list(s=s.init,z=z.init,N=N.init,N.survive=N.survive.init,N.recruit=N.recruit.init,
               N.super=N.super.init,z.start=z.start.init,z.stop=z.stop.init,z.super=z.super.init,
               K1D.mark=K1D.mark,K1D.sight=K1D.sight,n.marked=n.marked,n.marked.all=n.marked.all,ID.marked=ID.marked,
-              tel.inds=tel.inds,X.mark=X.mark,X.sight=X.sight,mark.states=mark.states,tel.z.states=tel.z.states,
+              X.mark=X.mark,X.sight=X.sight,mark.states=mark.states,tel.z.states=tel.z.states,
               dummy.data=dummy.data,y2D=y2D,
               y.mark=y.mark,y.mID=y.mID,y.mnoID=y.mnoID,y.um=y.um,y.unk=y.unk,
-              xlim=xlim,ylim=ylim,locs=locs,n.tel.inds=n.tel.inds,tel.inds=tel.inds,n.locs.ind=n.locs.ind))
+              xlim=xlim,ylim=ylim))
   
 }

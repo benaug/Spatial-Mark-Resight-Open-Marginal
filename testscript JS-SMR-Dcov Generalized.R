@@ -13,31 +13,42 @@ nimbleOptions(determinePredictiveNodesInModel = FALSE)
 library(RColorBrewer)
 cols1 <- brewer.pal(9,"Greens")
 
-n.year <- 4 #number of years
+n.year <- 6 #number of years
 phi <- rep(0.8,n.year-1) #yearly per-capita recruitment
 gamma <- rep(0.2,n.year-1) #yearly per-capita recruitment
 p0 <- rep(0.1,n.year) #marking process p0
 lam0 <- rep(0.25,n.year) #sighting process lam0
 sigma <- rep(0.5,n.year) #yearly detection function scale
-K.mark <- c(5,1,5,1) #yearly marking occasions, this testscript assumes marking effort in all sessions
-K.sight <- rep(5,n.year) #yearly resighting occasions, this testscript assumes resighting effort in all sessions
+#Number of occasions per year per method
+#to skip sampling by a method in a year, set its K=0
+K.mark <- c(5,0,0,5,0,0) #yearly marking occasions
+K.sight <- c(5,5,5,5,5,5) #yearly resighting occasions
+if(length(K.mark)!=length(K.sight))stop("K.mark and K.sight must be same length")
+if(length(K.mark)!=n.year)stop("K.mark and K.sight must be of length n.year")
+
 #theta is probability of observing each sample type for marked and unmarked individuals
 #assuming the same over years
 theta.marked <- c(0.75,0.15,0.1) #P(ID, Marked no ID, unk status). must sum to 1
 theta.unmarked <- 0.75 #prob known marked status. #P(ID, Marked no ID, unk status)=(0,theta.unmarked,1-theta.unmarked)
 
 #make an SCR trapping array. Making the trapping array size vary by session
+#I think the code currently requires marking/sighting traps in all sessions
+#even when not used. Will fix that.
 X.sight <- vector("list",n.year)
 X.sight[[1]] <- as.matrix(expand.grid(1:10,1:10))
 X.sight[[2]] <- as.matrix(expand.grid(1:10,1:10))
 X.sight[[3]] <- as.matrix(expand.grid(1:10,1:10))
 X.sight[[4]] <- as.matrix(expand.grid(1:10,1:10))
+X.sight[[5]] <- as.matrix(expand.grid(1:10,1:10))
+X.sight[[6]] <- as.matrix(expand.grid(1:10,1:10))
 
 X.mark <- vector("list",n.year)
 X.mark[[1]] <- as.matrix(expand.grid(3:8,3:8))
 X.mark[[2]] <- as.matrix(expand.grid(3:8,3:8))
 X.mark[[3]] <- as.matrix(expand.grid(3:8,3:8))
 X.mark[[4]] <- as.matrix(expand.grid(3:8,3:8))
+X.mark[[5]] <- as.matrix(expand.grid(3:8,3:8))
+X.mark[[6]] <- as.matrix(expand.grid(3:8,3:8))
 
 ### Habitat covariate stuff###
 #get x and y extent for each grid separately, then merge
@@ -126,7 +137,7 @@ mark.year.pars <- c(2,2,3) #parameters for truncated poisson: c(lambda, lower tr
 #mark lifetime frequencies for mark.year.pars
 table(rtruncpois(10000,lambda=mark.year.pars[1],lower=mark.year.pars[2],upper=mark.year.pars[3]))/10000
 #marking protocol: #1) never replace a mark if currently collared on capture 2) always replace
-mark.protocol <- 1 
+mark.protocol <- 2 
 
 # simulate some data
 set.seed(390297) #change seed for new data set
@@ -138,7 +149,10 @@ data <- sim.JS.SMR.Dcov.Generalized(D.beta0=D.beta0,D.beta1=D.beta1,D.cov=D.cov,
             mark.year.pars=mark.year.pars,mark.protocol=mark.protocol,
             n.tel.locs=n.tel.locs)
 
-#what is observed data
+#what is observed data? Note data objects have all n.years with all 0 data if no effort for a method
+#Could be structured without years with no effort, but that would require more work changing custom
+#N/z updates.
+
 # str(data$y.mark) #marking process history: n.marked.all x n.year x J.mark.max
 # str(data$y.mID) #marked with ID sighting history: n.marked.all x n.year x J.sight.max
 # str(data$y.mnoID) #marked with no ID sighting history: n.year x J.sight.max
@@ -167,21 +181,43 @@ points(data$truth$s,pch=16)
 for(g in 1:n.year){
   image(data$x.vals,data$y.vals,matrix(data$D.cov*data$InSS,data$n.cells.x,data$n.cells.y),
         main=paste("Year",g),xlab="X",ylab="Y",col=cols1)
-  points(data$X.sight[[g]],pch=4,lwd=2)
-  points(data$X.mark[[g]],pch=4,lwd=2,col="darkred")
+  if(K.sight[g]>0){
+    points(data$X.sight[[g]],pch=4,lwd=2)
+  }
+  if(K.mark[g]>0){
+    points(data$X.mark[[g]],pch=4,lwd=2,col="darkred")
+  }
   points(data$truth$s[data$truth$z[,g]==1,1],data$truth$s[data$truth$z[,g]==1,2],pch=16) #activity centers
   if(data$n.marked[g]>0){
     for(i in 1:data$n.marked[g]){
-      trapcaps <- which(data$y.mID[data$ID.marked[[g]][i],g,]>0)
+      id <- data$ID.marked[[g]][i]
+      trapcaps <- which(data$y.mID[id,g,]>0)
       traps <-  data$X.sight[[g]][1:data$J.sight[g],][trapcaps,]
-      trapcaps2 <- which(data$y.mark[data$ID.marked[[g]][i],g,]>0)
+      trapcaps2 <- which(data$y.mark[id,g,]>0)
       traps2 <-  data$X.mark[[g]][1:data$J.mark[g],][trapcaps2,]
       traps <- rbind(traps,traps2)
-      s <- data$truth$s[data$ID.marked[[g]][i],]
+      s <- data$s[id,]
       points(s[1],s[2],col="goldenrod",pch=16)
       if(nrow(traps)>0){
         for(j in 1:nrow(traps)){
           lines(x=c(s[1],traps[j,1]),y=c(s[2],traps[j,2]),col="goldenrod")
+        }
+      }
+      tel.idx <- which(data$tel.ID == id)
+      if(length(tel.idx) > 0){
+        tel.g.idx <- which(data$tel.year[tel.idx,]==g)
+        if(length(tel.g.idx) > 0){
+          nloc <- data$n.locs.ind[tel.idx,tel.g.idx]
+          if(nloc>0){
+            for(l in 1:nloc){
+              lines(x=c(s[1],data$locs[tel.idx,tel.g.idx,l,1]),
+                    y=c(s[2],data$locs[tel.idx,tel.g.idx,l,2]),
+                    col="gray80")
+            }
+            points(data$locs[tel.idx,tel.g.idx,1:nloc,1],data$locs[tel.idx,tel.g.idx,1:nloc,2],
+                   pch = 16, cex = 0.5, col = "lightblue")
+            points(s[1],s[2],col="darkblue",pch = 16)
+          }
         }
       }
     }
@@ -196,7 +232,7 @@ mask.check(dSS=data$dSS,cells=data$cells,n.cells=data$n.cells,n.cells.x=data$n.c
 ##Initialize##
 data$N[1] + sum(data$N.recruit) #true N.super
 
-M <- 200 #data augmentation level.
+M <- 250 #data augmentation level.
 
 #initialize N and z objects and activity centers
 if(M < (data$n.marked.all)+1) stop("M must be larger than the number of marked individuals plus at least one unmarked individual.")
@@ -205,6 +241,8 @@ n.year <- data$n.year
 n.marked <- data$n.marked
 J.mark <- data$J.mark
 J.sight <- data$J.sight
+K.mark <- data$K.mark
+K.sight <- data$K.sight
 xlim <- data$xlim
 ylim <- data$ylim
 dSS <- data$dSS
@@ -225,7 +263,7 @@ inits <- list(p0=rep(0.1,n.year),lam0=rep(0.25,n.year),sigma=rep(0.5,n.year)) #i
 #This function structures the simulated data to fit the model in Nimble (some more restructing below)
 nimbuild <- init.SMR.Dcov.Open.Generalized(data,inits,M=M)
 
-#plot to check s inits. plot by year
+#plot to check s inits by year
 for(g in 1:n.year){
   image(x.vals,y.vals,matrix(D.cov*InSS,n.cells.x,n.cells.y),
         main=paste("Year",g),xlab="X",ylab="Y",col=cols1)
@@ -248,19 +286,28 @@ for(g in 1:n.year){
   }
 }
 
+#these indicate in which year marking/sighting occurs and how many total sessions of each
+mark.years <- which(K.mark!=0)
+sight.years <- which(K.sight!=0)
+n.mark.years <- length(mark.years)
+n.sight.years <- length(sight.years)
+
 #constants for Nimble
 #might want to center D.cov here. Simulated D.cov in this testscript is already effectively centered.
 constants <- list(n.year=n.year,M=M,J.mark=J.mark,J.sight=J.sight,xlim=xlim,ylim=ylim,
                   K1D.mark=nimbuild$K1D.mark,K1D.sight=nimbuild$K1D.sight,
                   D.cov=D.cov,cellArea=cellArea,n.cells=n.cells,res=res,
                   n.marked.all=nimbuild$n.marked.all,
-                  tel.inds=nimbuild$tel.inds,n.tel.inds=nimbuild$n.tel.inds,n.locs.ind=nimbuild$n.locs.ind)
+                  n.tel.years=data$n.tel.years,tel.year=data$tel.year,
+                  tel.ID=data$tel.ID,n.tel.inds=data$n.tel.inds,n.locs.ind=data$n.locs.ind,
+                  mark.years=mark.years,sight.years=sight.years,n.mark.years=n.mark.years,
+                  n.sight.years=n.sight.years)
 #inits for Nimble
 Niminits <- list(N=nimbuild$N,N.survive=nimbuild$N.survive,N.recruit=nimbuild$N.recruit,
                  ER=nimbuild$N.recruit,N.super=nimbuild$N.super,z.super=nimbuild$z.super,
                  z=nimbuild$z,z.start=nimbuild$z.start,z.stop=nimbuild$z.stop,
                  s=nimbuild$s,phi.fixed=0.5,D0=nimbuild$N[1]/(sum(InSS)*res^2),D.beta1=0,
-                 p0=inits$p0,lam0=inits$lam0,sigma=inits$sigma)
+                 p0=inits$p0[mark.years],lam0=inits$lam0[sight.years],sigma.fixed=inits$sigma[1])
 
 #data for Nimble
 Nimdata <- list(y.mark=nimbuild$y.mark, #marking process
@@ -275,15 +322,15 @@ Nimdata <- list(y.mark=nimbuild$y.mark, #marking process
 
 # set parameters to monitor
 parameters <- c('N','gamma.fixed','N.recruit','N.survive','N.super','lambda.y1',
-                'phi.fixed','p0','lam0','sigma','theta.marked','theta.unmarked',
+                'phi.fixed','p0','lam0','sigma.fixed','theta.marked','theta.unmarked',
                 'D0','D.beta1')
 nt <- 1 #thinning rate
 
 # Build the model, configure the mcmc, and compile
 start.time <- Sys.time()
 Rmodel <- nimbleModel(code=NimModel, constants=constants, data=Nimdata,check=FALSE,inits=Niminits)
-config.nodes <- c('phi.fixed','gamma.fixed','p0','lam0','sigma','theta.marked',paste('theta.unmarked[1:',n.year,',2:3',']'))
-# config.nodes <- c()
+config.nodes <- c('phi.fixed','gamma.fixed','p0','lam0','sigma.fixed','theta.marked','theta.unmarked[2:3]')
+#use this above if theta.unmarked is year specific (no change for theta.marked): paste('theta.unmarked[1:',n.year,',2:3',']')
 conf <- configureMCMC(Rmodel,monitors=parameters, thin=nt,
                       nodes=config.nodes,useConjugacy = FALSE)
 
@@ -308,6 +355,9 @@ calcNodes <- c(N.nodes,N.recruit.nodes,y.mark.nodes,y.um.nodes,y.unk.nodes,z.nod
 conf$addSampler(target = c("z"),
                 type = 'zSampler',control = list(M=M,n.marked.all=nimbuild$n.marked.all,
                                                  n.year=n.year,J.mark=J.mark,J.sight=J.sight,
+                                                 mark.years=mark.years,sight.years=sight.years,
+                                                 n.mark.years=n.mark.years,
+                                                 n.sight.years=n.sight.years,
                                                  mark.states=nimbuild$mark.states,
                                                  tel.z.states=nimbuild$tel.z.states,
                                                  z.super.ups=z.super.ups,y2D=nimbuild$y2D,
@@ -324,25 +374,25 @@ conf$addSampler(target = c("z"),
 #draws from the prior otherwise. Also implements Herliansyah et al. (2024) efficiency improvement
 #that does not require summation over all individuals' lam values when updating 1 activity center.
 for(i in 1:M){
-  loc.nodes <- c() #map individuals to their telemetry
-  for(g in 1:n.year){
-    idx <- which(nimbuild$tel.inds[,g]==i)
-    if(length(idx)>0){
-      loc.nodes <- c(loc.nodes,Rmodel$expandNodeNames(paste("locs[",idx,",",g,",1:",nimbuild$n.locs.ind[idx,g],",",1:2,"]")))
+  loc.nodes <- c()
+  tel.idx <- which(data$tel.ID==i)
+  if(length(tel.idx)>0){
+    for(g in 1:data$n.tel.years[tel.idx]){
+      loc.nodes <- c(loc.nodes,Rmodel$expandNodeNames(paste0("locs[",tel.idx,",",g,",1:",data$n.locs.ind[tel.idx,g],",1:2]")))
     }
   }
   conf$addSampler(target = paste("s[",i,", 1:2]", sep=""),
                   type = 'sSamplerDcov',control=list(i=i,res=res,n.cells.x=n.cells.x,n.cells.y=n.cells.y,
-                                                 xlim=xlim,ylim=ylim,J.mark=J.mark,J.sight=J.sight,n.marked.all=nimbuild$n.marked.all,
-                                                 n.year=n.year,loc.nodes=loc.nodes,mark.states=nimbuild$mark.states[i,]),
+                                                     xlim=xlim,ylim=ylim,J.mark=J.mark,J.sight=J.sight,n.marked.all=nimbuild$n.marked.all,
+                                                     n.year=n.year,loc.nodes=loc.nodes,mark.states=nimbuild$mark.states[i,]),
                   silent = TRUE)
-  #scale parameter here is just the starting scale. It will be tuned.
 }
 
-for(g in 1:n.year){
-  conf$addSampler(target = c(paste("lam0[",g,"]"),paste("sigma[",g,"]")),
-                  type = 'RW_block',control=list(adaptive=TRUE),silent = TRUE)
-}
+#usually a good idea with year-specific sigma
+# for(g in 1:n.year){
+#   conf$addSampler(target = c(paste("lam0[",g,"]"),paste("sigma[",g,"]")),
+#                   type = 'RW_block',control=list(adaptive=TRUE),silent = TRUE)
+# }
 
 conf$addSampler(target = c("D0","D.beta1"),
                 type = 'AF_slice',control=list(adaptive=TRUE),silent = TRUE)
@@ -355,7 +405,7 @@ Cmcmc <- compileNimble(Rmcmc,project=Rmodel)
 
 # Run the model.
 start.time2 <- Sys.time()
-Cmcmc$run(2500,reset=FALSE) #can extend run by rerunning this line
+Cmcmc$run(2000,reset=FALSE) #can extend run by rerunning this line
 end.time <- Sys.time()
 time1 <- end.time-start.time  # total time for compilation, replacing samplers, and fitting
 time2 <- end.time-start.time2 # post-compilation run time
@@ -375,3 +425,20 @@ rem.idx <- c(grep("N",colnames(mvSamples)),
 tmp <- cor(mvSamples[-c(1:500),-rem.idx])
 diag(tmp) <- NA
 which(abs(tmp)>0.5,arr.ind=TRUE)
+
+
+#Plot N by year with method and mark info
+marks.deployed <- colSums(apply(data$y.mark>0,c(1,2),sum)>0) #marks deployed per year
+marks.active <- data$n.marked #marks active per year
+methods <- ifelse(K.mark > 0 & K.sight > 0, "M-S",
+                  ifelse(K.mark > 0, "M",
+                         ifelse(K.sight > 0, "S", NA)))
+
+library(vioplot)
+vioplot(mvSamples[-c(1:500),3:(n.year+2)],ylim=c(0,200),xlim=c(-0.5,n.year+0.5))
+mtext("Method(s) Used",3,at=0,line=2)
+mtext(methods,3,at=1:n.year,line=2)
+mtext("marks deployed",3,at=0,line=1)
+mtext(marks.deployed,3,at=1:n.year,line=1)
+mtext("marks active",3,at=0,line=0)
+mtext(marks.active,3,at=1:n.year,line=0)

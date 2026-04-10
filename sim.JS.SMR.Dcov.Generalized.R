@@ -17,7 +17,7 @@ sim.JS.SMR.Dcov.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
                             K.mark=NA,K.sight=NA,K1D.mark=NA,K1D.sight=NA,
                             p0=NA,lam0=NA,sigma=NA,X.mark=NA,X.sight=NA,buff=buff,xlim=NA,
                             ylim=NA,res=NA,
-                            mark.year.pars=mark.year.pars,mark.protocol=mark.protocol,
+                            mark.year.pars=NA,mark.protocol=NA,
                             n.tel.locs=n.tel.locs){
   
   J.mark <- J.sight <- rep(NA,n.year)
@@ -167,6 +167,7 @@ sim.JS.SMR.Dcov.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   #deploy collars to individuals captured in marking process
   mark.caps <- 1*apply(y.mark,c(1,2),sum)
   mark.states <- z*0 #0: unmarked, 1: marked
+  tel.z.states <- z*NA
   #observed data, not true states (because we don't know if dead)
   eligible.states <- matrix(1,N.super,n.year) #eligible based on mark.states collaring history, may be dead and eligible
   for(g in 1:n.year){
@@ -176,6 +177,7 @@ sim.JS.SMR.Dcov.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
         mark.life <- rtruncpois(1,lambda=mark.year.pars[1],lower=mark.year.pars[2],upper=mark.year.pars[3])
         end.year <- min(g+mark.life-1,n.year)
         mark.states[i,g:end.year] <- 1
+        tel.z.states[i,g:end.year] <- 1
         if(mark.life>1&mark.protocol==1){ #if we don't replace marks on capture, make ineligible
           if(g<n.year){
             eligible.states[i,(g+1):end.year] <- 0
@@ -184,14 +186,21 @@ sim.JS.SMR.Dcov.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
       }
     }
   }
+  
+  #switch states to observed deaths when z==0 
+  tel.z.states[which(tel.z.states==1&z==0)] <- 0
+  mark.states[which(mark.states==1&z==0)] <- 0
   ID.marked <- vector("list",n.year)
   for(g in 1:n.year){
     ID.marked[[g]] <- which(mark.states[,g]==1)
   }
-  
-  tel.z.states <- z*NA #0: dead, 1: alive, NA unknown
-  tel.z.states[which(mark.states==1&z==1)] <- 1
-  tel.z.states[which(mark.states==1&z==0)] <- 0
+  #if you observe a death, fill in 0s to the end
+  for(i in 1:N.super){
+    idx <- which(tel.z.states[i,]==0)
+    if(length(idx)>0){
+      tel.z.states[i,max(idx):n.year] <- 0
+    }
+  }
   #if you observe a death, fill in 0s to the end
   for(i in 1:N.super){
     idx <- which(tel.z.states[i,]==0)
@@ -231,46 +240,85 @@ sim.JS.SMR.Dcov.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
       }
     }else{
       y.mnoID[g,] <- rep(0,J.sight[g])
-      y.unk[g,] <- apply(y.event[unmarked.inds,,3],2,sum) #no marked counts to add
+      y.unk[g,] <- apply(y.event[unmarked.inds,g,,3],2,sum) #no marked counts to add
     }
     y.um[g,] <- apply(y.event[unmarked.inds,g,,2],2,sum)
     if(!sum(y[,g,])==(sum(y.mID[,g,])+sum(y.mnoID[g,])+sum(y.um[g,])+sum(y.unk[g,])))stop("data simulator bug")
   }
   
-  #old sighting event process
-  # y.mID <- y.mnoID <- y.um <- y.unk <- vector("list",n.year)
-  # for(g in 1:n.year){
-  #   y.event <- array(0,dim=c(N.super,J.sight[g],3))
-  #   #loop over cells with positive counts
-  #   idx <- which(y[,g,]>0,arr.ind=TRUE)
-  #   for(l in 1:nrow(idx)){
-  #     if(mark.states[idx[l,1],g]==1){ #if marked
-  #       y.event[idx[l,1],idx[l,2],] <- rmultinom(1,y[idx[l,1],g,idx[l,2]],theta.marked)
-  #     }else{#if unmarked
-  #       y.event[idx[l,1],idx[l,2],] <- rmultinom(1,y[idx[l,1],g,idx[l,2]],c(0,theta.unmarked,1-theta.unmarked))
+  #simulate telemetry locations for all collared years
+  if(n.tel.locs>0&sum(y.mark)>0){
+    n.tel.years.vec <- rowSums(tel.z.states==1,na.rm=TRUE)
+    tel.ID <- which(n.tel.years.vec>0)
+    n.tel.inds <- length(tel.ID)
+    if(n.tel.inds>0){
+      n.tel.years <- n.tel.years.vec[tel.ID] #length n.tel.inds
+      max.n.tel.years <- max(n.tel.years)
+      locs <- array(NA,dim=c(n.tel.inds,max.n.tel.years,n.tel.locs,2))
+      n.locs.ind <- matrix(0,n.tel.inds,max.n.tel.years)
+      tel.year <- matrix(NA,n.tel.inds,max.n.tel.years)
+      for(i in 1:n.tel.inds){
+        collared.years <- which(tel.z.states[tel.ID[i],]==1)
+        tel.year[i,1:length(collared.years)] <- collared.years
+        for(gy in 1:length(collared.years)){
+          g <- collared.years[gy]
+          locs[i,gy,1:n.tel.locs,1] <- rnorm(n.tel.locs,s[tel.ID[i],1],sigma[g])
+          locs[i,gy,1:n.tel.locs,2] <- rnorm(n.tel.locs,s[tel.ID[i],2],sigma[g])
+          n.locs.ind[i,gy] <- n.tel.locs
+        }
+      }
+    }else{
+      locs <- tel.ID <- tel.year <- NA
+      n.tel.inds <- 0
+      n.locs.ind <- NA
+      n.tel.years <- NA
+    }
+  }else{
+    print("no individuals captured, no telemetry")
+    locs <- tel.ID <- tel.year <- NA
+    n.tel.inds <- 0
+    n.locs.ind <- NA
+    n.tel.years <- NA
+  }
+  tel.ID.g <- vector("list",n.year)
+  for(g in 1:n.year){
+    collared.g <- which(tel.z.states[,g]==1)
+    if(length(collared.g)>0){
+      tel.ID.g[[g]] <- collared.g
+    }
+  }
+  
+  #simulate telemetry locations
+  # if(n.tel.locs>0&sum(y.mark)>0){
+  #   n.tel.years <- rowSums(tel.z.states==1,na.rm=TRUE)
+  #   n.tel.years <- n.tel.years[ID.marked.all]
+  #   n.tel.inds <- sum(n.tel.years>0)
+  #   tel.year <- matrix(NA,n.tel.inds,n.year)
+  #   max.n.tel.years <- max(n.tel.years)
+  #   locs <- array(NA,dim=c(n.tel.inds,max.n.tel.years,n.tel.locs,2))
+  #   for(i in 1:n.tel.inds){
+  #     tel.year[i,1:n.tel.years[i]] <- which(tel.z.states[ID.marked.all[i],]==1)
+  #     for(g in 1:n.tel.years[i]){
+  #       #if adding movement, reference correct s years
+  #       locs[i,g,,] <- c(rnorm(n.tel.locs,s[ID.marked.all[i],1],sigma[tel.year[i,g]]),
+  #                        rnorm(n.tel.locs,s[ID.marked.all[i],2],sigma[tel.year[i,g]]))
   #     }
   #   }
-  #   marked.inds <- which(mark.states[,g]==1)
-  #   unmarked.inds <- which(mark.states[,g]==0)
-  #   y.mID[[g]] <- apply(y.event[ID.marked.all,,1],c(1,2),sum) #include all marked individuals for consistent individual numbers across years
-  #   if(n.marked[g]>0){
-  #     if(n.marked[g]==1){
-  #       y.mnoID[[g]] <- y.event[marked.inds,,2]
-  #       y.unk[[g]] <- y.event[marked.inds,,3] + apply(y.event[unmarked.inds,,3],2,sum)
-  #     }else{
-  #       y.mnoID[[g]] <- apply(y.event[marked.inds,,2],2,sum)
-  #       y.unk[[g]] <- apply(y.event[marked.inds,,3],2,sum) + apply(y.event[unmarked.inds,,3],2,sum)
-  #     }
-  #   }else{
-  #     y.mnoID[[g]] <- rep(0,J.sight[g])
-  #     y.unk[[g]] <- apply(y.event[unmarked.inds,,3],2,sum) #no marked counts to add
+  #   n.locs.ind <- apply(!is.na(locs[,,,1]),c(1,2),sum)
+  #   if(dim(locs)[2]==1){
+  #     n.locs.ind <- matrix(rowSums(n.locs.ind),ncol=1)
   #   }
-  #   y.um[[g]] <- apply(y.event[unmarked.inds,,2],2,sum)
-  #   if(!sum(y[,g,])==(sum(y.mID[[g]])+sum(y.mnoID[[g]])+sum(y.um[[g]])+sum(y.unk[[g]])))stop("data simulator bug")
+  # }else{
+  #   print("no individuals captured, no telemetry")
+  #   locs <- tel.year <- NA
+  #   n.tel.inds <- 0
+  #   n.tel.years <- NA
+  #   n.locs.ind <- NA
   # }
   
   mark.states <- mark.states[ID.marked.all,]
   tel.z.states <- tel.z.states[ID.marked.all,]
+  
   #renumber ID.marked and ID.marked.all in new order after discarding unmarked guys in numbering
   #reorder y, z, s first
   ID.unmarked.all <- setdiff(1:N.super,ID.marked.all)
@@ -287,42 +335,28 @@ sim.JS.SMR.Dcov.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   for(g in 1:n.year){
     ID.marked[[g]] <- which(mark.states[,g]==1)
   }
+  tel.ID <- match(tel.ID,ID.marked.all)
+  for(g in 1:n.year){
+    if(length(tel.ID.g[[g]])>0){
+      tel.ID.g[[g]] <- match(tel.ID.g[[g]],ID.marked.all)
+    }
+  }
   ID.marked.all <- 1:n.marked.all
   
   #discard uncaptured individuals in marking process. keep all marked individuals across years
-  # y.mark.list <- vector("list",n.year)
-  # for(g in 1:n.year){
-  #   y.mark.list[[g]] <- y.mark[ID.marked.all,g,1:J.mark[g]]
-  # }
   y.mark <- y.mark[ID.marked.all,,]
   
-  
-  #Telemetry observations for marked individuals. using all marked individuals here
-  tel.inds <- ID.marked
-  if(n.tel.locs>0){
-    locs <- array(NA,dim=c(max(n.marked),n.year,max(n.tel.locs),2))
-    for(g in 1:n.year){
-      if(n.marked[g]>0){
-        for(i in 1:n.marked[g]){
-          for(j in 1:n.tel.locs){
-            locs[i,g,j,] <- c(rnorm(1,s[tel.inds[[g]][i],1],sigma),rnorm(1,s[tel.inds[[g]][i],2],sigma))
-          }
-        }
-      }
-    }
-  }else{
-    locs <- NA
-  }
-  
   return(list(y.mark=y.mark,y.mID=y.mID,y.mnoID=y.mnoID,y.um=y.um,y.unk=y.unk, #observed data
-              n.year=n.year,n.marked=n.marked,n.marked.all=n.marked.all,locs=locs,
+              n.year=n.year,n.marked=n.marked,n.marked.all=n.marked.all,
+              locs=locs,n.tel.inds=n.tel.inds,n.tel.years=n.tel.years,tel.year=tel.year,
+              n.locs.ind=n.locs.ind,tel.ID=tel.ID,tel.ID.g=tel.ID.g,
               ID.marked=ID.marked,ID.marked.all=ID.marked.all,
               mark.states=mark.states,tel.z.states=tel.z.states,
               N=N,N.recruit=N.recruit,N.survive=N.survive,N.super=N.super,X.mark=X.mark,X.sight=X.sight,
               K.mark=K.mark,K.sight=K.sight,
-              J.mark=J.mark,J.sight=J.sight,K1D.mark=K1D.mark,K1D.sight=K1D.sight,tel.inds=tel.inds,
+              J.mark=J.mark,J.sight=J.sight,K1D.mark=K1D.mark,K1D.sight=K1D.sight,
               xlim=xlim,ylim=ylim,x.vals=x.vals,y.vals=y.vals,dSS=dSS,cells=cells,
-              n.cells=n.cells,n.cells.x=n.cells.x,n.cells.y=n.cells.y,s.cell=s.cell,
+              n.cells=n.cells,n.cells.x=n.cells.x,n.cells.y=n.cells.y,s.cell=s.cell,s=s,
               D.cov=D.cov,InSS=InSS,res=res,cellArea=cellArea,N=N,lambda.y1=lambda.y1,
               truth=truth))
 }
