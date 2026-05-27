@@ -854,8 +854,8 @@ zSampler <- nimbleFunction(
           lp.proposed.N <- model$calculate(N.nodes[1])
           lp.proposed.N.recruit <- model$calculate(N.recruit.nodes)
           lp.proposed.y.mark <- model$calculate(y.mark.nodes[pick.idx.mark]) #will always be 0
-          lp.proposed.y.um <- model$calculate(y.um.nodes[sight.years]) #will always be 0
-          lp.proposed.y.unk <- model$calculate(y.unk.nodes[sight.years]) #will always be 0
+          lp.proposed.y.um <- model$calculate(y.um.nodes[sight.years]) 
+          lp.proposed.y.unk <- model$calculate(y.unk.nodes[sight.years]) 
           lp.proposed.surv <- model$calculate(z.nodes[pick]) #will always be 0
           lp.proposed.tel.z.states <- model$calculate(tel.z.states.nodes[pick]) #will always be 0
 
@@ -964,8 +964,8 @@ zSampler <- nimbleFunction(
           lp.initial.N <- model$getLogProb(N.nodes[1])
           lp.initial.N.recruit <- model$getLogProb(N.recruit.nodes)
           lp.initial.y.mark <- model$getLogProb(y.mark.nodes[pick.idx.mark]) #will always be 0
-          lp.initial.y.um <- model$getLogProb(y.um.nodes[sight.years]) #will always be 0
-          lp.initial.y.unk <- model$getLogProb(y.unk.nodes[sight.years]) #will always be 0
+          lp.initial.y.um <- model$getLogProb(y.um.nodes[sight.years])
+          lp.initial.y.unk <- model$getLogProb(y.unk.nodes[sight.years]) 
           lp.initial.surv <- model$getLogProb(z.nodes[pick]) #will always be 0
           lp.initial.tel.z.states <- model$getLogProb(tel.z.states.nodes[pick]) #will always be 0
 
