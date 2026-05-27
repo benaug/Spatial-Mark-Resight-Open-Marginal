@@ -201,13 +201,6 @@ sim.JS.SMR.Dcov.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
       tel.z.states[i,max(idx):n.year] <- 0
     }
   }
-  #if you observe a death, fill in 0s to the end
-  for(i in 1:N.super){
-    idx <- which(tel.z.states[i,]==0)
-    if(length(idx)>0){
-      tel.z.states[i,max(idx):n.year] <- 0
-    }
-  }
   ID.marked.all <- sort(unique(unlist(ID.marked)))
   n.marked.all <- length(ID.marked.all)
   n.marked <- sapply(ID.marked,length)

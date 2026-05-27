@@ -340,11 +340,10 @@ conf <- configureMCMC(Rmodel,monitors=parameters, thin=nt,
 z.super.ups <- round(M*0.25) #how many z.super update proposals per iteration?
 #20% of M seems reasonable, but optimal will depend on data set
 y.mark.nodes <- Rmodel$expandNodeNames(paste0("y.mark[1:",M,",1:",n.year,",1:",max(J.mark),"]"))
-pd.nodes <- Rmodel$expandNodeNames(paste0("pd[1:",M,",1:",n.year,",1:",max(J.sight),"]"))
+pd.nodes <- Rmodel$expandNodeNames(paste0("pd[1:",M,",1:",n.year,",1:",max(J.mark),"]"))
 lam.nodes <- Rmodel$expandNodeNames(paste0("lam[1:",M,",1:",n.year,",1:",max(J.sight),"]"))
 y.um.nodes <- Rmodel$expandNodeNames(paste("y.um[1:",n.year,",1:",max(J.sight),"]"))
 y.unk.nodes <- Rmodel$expandNodeNames(paste("y.unk[1:",n.year,",1:",max(J.sight),"]"))
-lam.mnoID.nodes <- Rmodel$expandNodeNames(paste("lam.mnoID[1:",n.year,",1:",max(J.sight),"]"))
 lam.um.nodes <- Rmodel$expandNodeNames(paste("lam.um[1:",n.year,",1:",max(J.sight),"]"))
 lam.unk.nodes <- Rmodel$expandNodeNames(paste("lam.unk[1:",n.year,",1:",max(J.sight),"]"))
 N.nodes <- Rmodel$expandNodeNames(paste0("N"))
@@ -365,7 +364,7 @@ conf$addSampler(target = c("z"),
                                                  z.super.ups=z.super.ups,y2D=nimbuild$y2D,
                                                  y.mark.nodes=y.mark.nodes,pd.nodes=pd.nodes,
                                                  y.um.nodes=y.um.nodes,y.unk.nodes=y.unk.nodes,
-                                                 lam.nodes=lam.nodes,lam.mnoID.nodes=lam.mnoID.nodes,
+                                                 lam.nodes=lam.nodes,
                                                  lam.um.nodes=lam.um.nodes,lam.unk.nodes=lam.unk.nodes,
                                                  N.nodes=N.nodes,z.nodes=z.nodes,ER.nodes=ER.nodes,
                                                  N.survive.nodes=N.survive.nodes,

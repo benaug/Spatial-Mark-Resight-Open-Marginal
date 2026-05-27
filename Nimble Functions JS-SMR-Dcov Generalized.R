@@ -217,7 +217,6 @@ zSampler <- nimbleFunction(
     y.unk.nodes <- control$y.unk.nodes
     pd.nodes <- control$pd.nodes
     lam.nodes <- control$lam.nodes
-    lam.mnoID.nodes <- control$lam.mnoID.nodes
     lam.um.nodes <- control$lam.um.nodes
     lam.unk.nodes <- control$lam.unk.nodes
     N.nodes <- control$N.nodes
