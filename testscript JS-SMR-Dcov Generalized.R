@@ -160,7 +160,7 @@ data <- sim.JS.SMR.Dcov.Generalized(D.beta0=D.beta0,D.beta1=D.beta1,D.cov=D.cov,
 # str(data$y.unk) #unknown marked status sighting history: n.year x J.sight.max
 # str(data$mark.states) #mark status history: n.marked.all x n.year
 # str(data$tel.z.states) #telemetry survival observations: n.marked.all x n.year
-# str(data$locs) #telemetry locations: max(n.marked[1:n.year]) x n.year x n.tel.locs x 2
+# str(data$locs) #telemetry locations: n.tel.inds x n.year x n.tel.locs x 2
 
 data$N #yearly abundance
 colSums(apply(data$y.mark>0,c(1,2),sum)>0) #marks deployed per year 
@@ -333,8 +333,7 @@ start.time <- Sys.time()
 Rmodel <- nimbleModel(code=NimModel, constants=constants, data=Nimdata,check=FALSE,inits=Niminits)
 config.nodes <- c('phi.fixed','gamma.fixed','p0','lam0','sigma.fixed','theta.marked','theta.unmarked[2:3]')
 #use this above if theta.unmarked is year specific (no change for theta.marked): paste('theta.unmarked[1:',n.year,',2:3',']')
-conf <- configureMCMC(Rmodel,monitors=parameters, thin=nt,
-                      nodes=config.nodes,useConjugacy = FALSE)
+conf <- configureMCMC(Rmodel,monitors=parameters,thin=nt,nodes=config.nodes)
 
 #add N/z sampler
 z.super.ups <- round(M*0.25) #how many z.super update proposals per iteration?

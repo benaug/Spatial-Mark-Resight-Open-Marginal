@@ -18,7 +18,7 @@ sim.JS.SMR.Dcov.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
                             p0=NA,lam0=NA,sigma=NA,X.mark=NA,X.sight=NA,buff=buff,xlim=NA,
                             ylim=NA,res=NA,
                             mark.year.pars=NA,mark.protocol=NA,
-                            n.tel.locs=n.tel.locs){
+                            n.tel.locs=NA){
   
   J.mark <- J.sight <- rep(NA,n.year)
   for(g in 1:n.year){

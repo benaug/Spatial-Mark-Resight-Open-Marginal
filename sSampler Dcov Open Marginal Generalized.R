@@ -87,19 +87,19 @@ sSamplerDcov <- nimbleFunction(
       inbox <- s.cand[1]< xlim[2] & s.cand[1]> xlim[1] & s.cand[2] < ylim[2] & s.cand[2] > ylim[1]
       if(inbox){
         #get initial logprobs - not optimizing by considering if this is marked or unmarked i
-        lp_initial_s <- model$getLogProb(s.nodes)
-        lp_initial_y.mark <- model$getLogProb(y.mark.nodes)
-        lp_initial_y.unk <- model$getLogProb(y.unk.nodes)
-        lp_initial_y.um <- model$getLogProb(y.um.nodes)
+        lp.initial.s <- model$getLogProb(s.nodes)
+        lp.initial.y.mark <- model$getLogProb(y.mark.nodes)
+        lp.initial.y.unk <- model$getLogProb(y.unk.nodes)
+        lp.initial.y.um <- model$getLogProb(y.um.nodes)
         if(i<=n.marked.all){ #if marked in at least one year
-          lp_initial_y.mID <- model$getLogProb(y.mID.nodes)
-          lp_initial_y.mnoID <- model$getLogProb(y.mnoID.nodes)
+          lp.initial.y.mID <- model$getLogProb(y.mID.nodes)
+          lp.initial.y.mnoID <- model$getLogProb(y.mnoID.nodes)
           #pull these out of model object
           bigLam.marked.initial <- model$bigLam.marked
           bigLam.unmarked.initial <- model$bigLam.unmarked
           #update proposed s
           model$s[i, 1:2] <<- s.cand
-          lp_proposed_s <- model$calculate(s.nodes) #proposed logprob for s.nodes
+          lp.proposed.s <- model$calculate(s.nodes) #proposed logprob for s.nodes
           #subtract these out before calculating lam
           bigLam.marked.proposed <- bigLam.marked.initial
           bigLam.unmarked.proposed <- bigLam.unmarked.initial
@@ -133,19 +133,19 @@ sSamplerDcov <- nimbleFunction(
           model$calculate(lam.mnoID.nodes) #update after bigLam
           model$calculate(lam.um.nodes) #update after bigLam
           model$calculate(lam.unk.nodes) #update after bigLam
-          lp_proposed_y.mark <- model$calculate(y.mark.nodes)
-          lp_proposed_y.mID <- model$calculate(y.mID.nodes)
-          lp_proposed_y.mnoID <- model$calculate(y.mnoID.nodes)
-          lp_proposed_y.um <- model$calculate(y.um.nodes)
-          lp_proposed_y.unk <- model$calculate(y.unk.nodes)
-          lp_initial <- lp_initial_s + lp_initial_y.mark + lp_initial_y.mID + lp_initial_y.mnoID + lp_initial_y.um + lp_initial_y.unk
-          lp_proposed <- lp_proposed_s + lp_proposed_y.mark + lp_proposed_y.mID + lp_proposed_y.mnoID + lp_proposed_y.um + lp_proposed_y.unk
+          lp.proposed.y.mark <- model$calculate(y.mark.nodes)
+          lp.proposed.y.mID <- model$calculate(y.mID.nodes)
+          lp.proposed.y.mnoID <- model$calculate(y.mnoID.nodes)
+          lp.proposed.y.um <- model$calculate(y.um.nodes)
+          lp.proposed.y.unk <- model$calculate(y.unk.nodes)
+          lp.initial <- lp.initial.s + lp.initial.y.mark + lp.initial.y.mID + lp.initial.y.mnoID + lp.initial.y.um + lp.initial.y.unk
+          lp.proposed <- lp.proposed.s + lp.proposed.y.mark + lp.proposed.y.mID + lp.proposed.y.mnoID + lp.proposed.y.um + lp.proposed.y.unk
         }else{ #else unmarked
           #pull this out of model object
           bigLam.unmarked.initial <- model$bigLam.unmarked
           #update proposed s
           model$s[i, 1:2] <<- s.cand
-          lp_proposed_s <- model$calculate(s.nodes) #proposed logprob for s.nodes
+          lp.proposed.s <- model$calculate(s.nodes) #proposed logprob for s.nodes
           #subtract these out before calculating lam
           bigLam.unmarked.proposed <- bigLam.unmarked.initial
           for(g in 1:n.year){ #z.super always 1 here
@@ -171,14 +171,14 @@ sSamplerDcov <- nimbleFunction(
           model$bigLam.unmarked <<- bigLam.unmarked.proposed
           model$calculate(lam.um.nodes) #update after bigLam
           model$calculate(lam.unk.nodes) #update after bigLam
-          lp_proposed_y.mark <- model$calculate(y.mark.nodes)
-          lp_proposed_y.um <- model$calculate(y.um.nodes)
-          lp_proposed_y.unk <- model$calculate(y.unk.nodes)
-          lp_initial <- lp_initial_s + lp_initial_y.mark + lp_initial_y.um + lp_initial_y.unk
-          lp_proposed <- lp_proposed_s + lp_proposed_y.mark + lp_proposed_y.um + lp_proposed_y.unk
+          lp.proposed.y.mark <- model$calculate(y.mark.nodes)
+          lp.proposed.y.um <- model$calculate(y.um.nodes)
+          lp.proposed.y.unk <- model$calculate(y.unk.nodes)
+          lp.initial <- lp.initial.s + lp.initial.y.mark + lp.initial.y.um + lp.initial.y.unk
+          lp.proposed <- lp.proposed.s + lp.proposed.y.mark + lp.proposed.y.um + lp.proposed.y.unk
         }
-        log_MH_ratio <- lp_proposed - lp_initial
-        accept <- decide(log_MH_ratio)
+        log.MH.ratio <- lp.proposed - lp.initial
+        accept <- decide(log.MH.ratio)
         if(accept) {
           copy(from = model, to = mvSaved, row = 1, nodes = calcNodes, logProb = TRUE)
         } else {
