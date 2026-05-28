@@ -211,32 +211,34 @@ sim.JS.SMR.Dcov.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   y.mnoID <- y.um <- y.unk <- matrix(0,n.year,J.sight.max)
   
   for(g in 1:n.year){
-    #loop over cells with positive counts
-    idx <- which(y[,g,]>0,arr.ind=TRUE)
-    for(l in 1:nrow(idx)){
-      if(mark.states[idx[l,1],g]==1){ #if marked
-        y.event[idx[l,1],g,idx[l,2],] <- rmultinom(1,y[idx[l,1],g,idx[l,2]],theta.marked)
-      }else{#if unmarked
-        y.event[idx[l,1],g,idx[l,2],] <- rmultinom(1,y[idx[l,1],g,idx[l,2]],c(0,theta.unmarked,1-theta.unmarked))
+    if(K.sight[g]>0){ #skip if no effort in this year
+      #loop over cells with positive counts
+      idx <- which(y[,g,]>0,arr.ind=TRUE)
+      for(l in 1:nrow(idx)){
+        if(mark.states[idx[l,1],g]==1){ #if marked
+          y.event[idx[l,1],g,idx[l,2],] <- rmultinom(1,y[idx[l,1],g,idx[l,2]],theta.marked)
+        }else{#if unmarked
+          y.event[idx[l,1],g,idx[l,2],] <- rmultinom(1,y[idx[l,1],g,idx[l,2]],c(0,theta.unmarked,1-theta.unmarked))
+        }
       }
-    }
-    marked.inds <- which(mark.states[,g]==1)
-    unmarked.inds <- which(mark.states[,g]==0)
-    y.mID[,g,] <- apply(y.event[ID.marked.all,g,,1],c(1,2),sum) #include all marked individuals for consistent individual numbers across years
-    if(n.marked[g]>0){
-      if(n.marked[g]==1){
-        y.mnoID[g,] <- y.event[marked.inds,g,,2]
-        y.unk[g,] <- y.event[marked.inds,g,,3] + apply(y.event[unmarked.inds,g,,3],2,sum)
+      marked.inds <- which(mark.states[,g]==1)
+      unmarked.inds <- which(mark.states[,g]==0)
+      y.mID[,g,] <- apply(y.event[ID.marked.all,g,,1],c(1,2),sum) #include all marked individuals for consistent individual numbers across years
+      if(n.marked[g]>0){
+        if(n.marked[g]==1){
+          y.mnoID[g,] <- y.event[marked.inds,g,,2]
+          y.unk[g,] <- y.event[marked.inds,g,,3] + apply(y.event[unmarked.inds,g,,3],2,sum)
+        }else{
+          y.mnoID[g,] <- apply(y.event[marked.inds,g,,2],2,sum)
+          y.unk[g,] <- apply(y.event[marked.inds,g,,3],2,sum) + apply(y.event[unmarked.inds,g,,3],2,sum)
+        }
       }else{
-        y.mnoID[g,] <- apply(y.event[marked.inds,g,,2],2,sum)
-        y.unk[g,] <- apply(y.event[marked.inds,g,,3],2,sum) + apply(y.event[unmarked.inds,g,,3],2,sum)
+        y.mnoID[g,] <- rep(0,J.sight[g])
+        y.unk[g,] <- apply(y.event[unmarked.inds,g,,3],2,sum) #no marked counts to add
       }
-    }else{
-      y.mnoID[g,] <- rep(0,J.sight[g])
-      y.unk[g,] <- apply(y.event[unmarked.inds,g,,3],2,sum) #no marked counts to add
+      y.um[g,] <- apply(y.event[unmarked.inds,g,,2],2,sum)
+      if(!sum(y[,g,])==(sum(y.mID[,g,])+sum(y.mnoID[g,])+sum(y.um[g,])+sum(y.unk[g,])))stop("data simulator bug")
     }
-    y.um[g,] <- apply(y.event[unmarked.inds,g,,2],2,sum)
-    if(!sum(y[,g,])==(sum(y.mID[,g,])+sum(y.mnoID[g,])+sum(y.um[g,])+sum(y.unk[g,])))stop("data simulator bug")
   }
   
   #simulate telemetry locations for all collared years
