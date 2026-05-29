@@ -264,6 +264,11 @@ n.cells <- data$n.cells
 n.cells.x <- data$n.cells.x
 n.cells.y <- data$n.cells.y
 max.n.tel.locs <- dim(data$locs)[3]
+#make sure any NA's in locs are converted to 0 to avoid nimble warnings about NA data
+idx <- which(is.na(data$locs))
+if(length(idx)>0){
+  data$locs[idx] <- 0
+}
 
 #Need some inits to initialize data
 #Use reasonable inits for lam0 and sigma since we check to make sure initial observation
