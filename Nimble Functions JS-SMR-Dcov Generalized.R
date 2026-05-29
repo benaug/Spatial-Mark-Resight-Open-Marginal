@@ -200,6 +200,7 @@ zSampler <- nimbleFunction(
   setup = function(model, mvSaved, target, control){
     M <- control$M
     n.marked.all <- control$n.marked.all
+    n.cap.all <- control$n.cap.all
     J.mark <- control$J.mark
     J.sight <- control$J.sight
     mark.states <- control$mark.states
@@ -234,12 +235,11 @@ zSampler <- nimbleFunction(
     entry.counts.curr[n.year + 1] <- sum(model$z.super==0)
     
     #1) Detected guy updates: z.start, z.stop
-    #in this model, these must be marked individuals
-    #they may be marked in some years, not others.
+    #detected/observed individuals include actually marked individuals and captured-but-not-marked individuals
     #y.mID logProb does not change because known to be in population those years
     #same for bigLam.marked and y.mnoID.
     # 1a) z start update (z.stop update below): Gibbs, compute full conditional
-    for(i in 1:n.marked.all){
+    for(i in 1:n.cap.all){
       if(y2D[i,1]==0){ #skip if known to be alive in 1st year
         z.curr <- model$z[i,]
         z.start.curr <- model$z.start[i]
@@ -435,7 +435,8 @@ zSampler <- nimbleFunction(
     }
     
     #1b) z stop update (z.start update above): Gibbs, compute full conditional
-    for(i in 1:n.marked.all){
+    #detected/observed individuals include actually marked individuals and captured-but-not-marked individuals
+    for(i in 1:n.cap.all){
       if(y2D[i,n.year]==0){ #skip if known to be alive in final year
         z.curr <- model$z[i,]
         z.stop.curr <- model$z.stop[i]
@@ -588,7 +589,7 @@ zSampler <- nimbleFunction(
     # Metropolis-Hastings, Propose z vectors from priors
     #entry counts current after z.start update
     bigLam.unmarked.initial <- model$bigLam.unmarked #pull this out.
-    for(i in (n.marked.all+1):M){
+    for(i in (n.cap.all+1):M){
       if(model$z.super[i]==1){
         z.curr <- model$z[i,]
         z.start.curr <- model$z.start[i]
@@ -779,8 +780,8 @@ zSampler <- nimbleFunction(
         non.init <- length(z.on)
         pick <- rcat(1,rep(1/non.init,non.init))
         pick <- z.on[pick]
-        #prereject turning off any marked individuals or if there is a single unmarked individual
-        if(model$N.super[1]==(n.marked.all+1)|pick<=n.marked.all){
+        #prereject turning off any individuals captured in marking process or if there is a single unmarked individual
+        if(model$N.super[1]==(n.cap.all+1)|pick<=n.cap.all){
           reject <- TRUE
         }
         if(!reject){
@@ -841,8 +842,8 @@ zSampler <- nimbleFunction(
           model$calculate(lam.unk.nodes)
 
           #Reverse proposal probs
-          recruit.probs.back <- c(model$lambda.y1, model$ER)
-          recruit.probs.back <- recruit.probs.back / sum(recruit.probs.back)
+          recruit.probs.back <- c(model$lambda.y1,model$ER)
+          recruit.probs.back <- recruit.probs.back/sum(recruit.probs.back)
           log.prop.back <- log(recruit.probs.back[z.start.curr])
           if(z.start.curr < n.year){
             for(g in (z.start.curr+1):n.year){
@@ -972,17 +973,17 @@ zSampler <- nimbleFunction(
           # Propose new z.start for the new on individual
           recruit.probs.for <- c(model$lambda.y1,model$ER)
           recruit.probs.for <- recruit.probs.for/sum(recruit.probs.for)
-          z.start.prop <- rcat(1, recruit.probs.for)  # propose entry cohort
+          z.start.prop <- rcat(1,recruit.probs.for)  # propose entry cohort
           log.prop.for <- log(recruit.probs.for[z.start.prop])
           model$z.start[pick] <<- z.start.prop
 
           # Simulate survival path
           model$z[pick,] <<- 0 # initialize to 0
-          model$z[pick, z.start.prop] <<- 1
+          model$z[pick,z.start.prop] <<- 1
           if(z.start.prop < n.year){
             for(g in (z.start.prop+1):n.year){
-              model$z[pick, g] <<- rbinom(1, 1, model$phi[pick, g-1] * model$z[pick, g-1])
-              log.prop.for <- log.prop.for + dbinom(model$z[pick, g], 1, model$phi[pick, g-1] * model$z[pick, g-1], log=TRUE)
+              model$z[pick,g] <<- rbinom(1,1,model$phi[pick,g-1]*model$z[pick,g-1])
+              log.prop.for <- log.prop.for + dbinom(model$z[pick,g],1,model$phi[pick,g-1]*model$z[pick,g-1],log=TRUE)
             }
           }
           # Update z.stop

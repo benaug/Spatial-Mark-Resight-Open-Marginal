@@ -18,7 +18,7 @@ sim.JS.SMR.Dcov.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
                             p0=NA,lam0=NA,sigma=NA,X.mark=NA,X.sight=NA,buff=buff,xlim=NA,
                             ylim=NA,res=NA,
                             mark.year.pars=NA,mark.protocol=NA,
-                            n.tel.locs=NA){
+                            n.tel.locs=NA,p.mark=NA){
   
   J.mark <- J.sight <- rep(NA,n.year)
   for(g in 1:n.year){
@@ -58,8 +58,6 @@ sim.JS.SMR.Dcov.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
         stop("K1D.sight[[g]] vector must be of length J.sight[g].")
       }
     }
-    print("K1D.sight not provided, assuming trap operation is perfect.")
-    K1D.sight <- rep(K.sight,J.sight)
   }else{
     print("K1D.sight not provided, assuming trap operation is perfect.")
     K1D.sight <- vector("list",n.year)
@@ -157,7 +155,6 @@ sim.JS.SMR.Dcov.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
     }
   }
   
-  if(sum(y.mark)==0)stop("No individuals captured. Reconsider parameter settings.")
   if(sum(y)==0)stop("No individuals resighted. Reconsider parameter settings.")
 
   #store true data for debugging
@@ -166,26 +163,35 @@ sim.JS.SMR.Dcov.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   #mark/telemetry data
   #deploy collars to individuals captured in marking process
   mark.caps <- 1*apply(y.mark,c(1,2),sum)
+  ID.cap.all <- sort(unique(which(rowSums(mark.caps)>0)))
+  n.cap.all <- length(ID.cap.all)
+  mark.deploy <- matrix(0,N.super,n.year) #actual marks deployed only
   mark.states <- z*0 #0: unmarked, 1: marked
   tel.z.states <- z*NA
   #observed data, not true states (because we don't know if dead)
   eligible.states <- matrix(1,N.super,n.year) #eligible based on mark.states collaring history, may be dead and eligible
   for(g in 1:n.year){
-    mark.g <- which(mark.caps[,g]>0&eligible.states[,g]==1)
-    if(length(mark.g)>0){
-      for(i in mark.g){
-        mark.life <- rtruncpois(1,lambda=mark.year.pars[1],lower=mark.year.pars[2],upper=mark.year.pars[3])
-        end.year <- min(g+mark.life-1,n.year)
-        mark.states[i,g:end.year] <- 1
-        tel.z.states[i,g:end.year] <- 1
-        if(mark.life>1&mark.protocol==1){ #if we don't replace marks on capture, make ineligible
-          if(g<n.year){
-            eligible.states[i,(g+1):end.year] <- 0
+    cap.g <- which(mark.caps[,g]>0&eligible.states[,g]==1)
+    if(length(cap.g)>0){
+      deploy.g <- rbinom(length(cap.g),1,p.mark[g])
+      mark.deploy[cap.g,g] <- deploy.g
+      mark.g <- cap.g[which(deploy.g==1)]
+      if(length(mark.g)>0){
+        for(i in mark.g){
+          mark.life <- rtruncpois(1,lambda=mark.year.pars[1],lower=mark.year.pars[2],upper=mark.year.pars[3])
+          end.year <- min(g+mark.life-1,n.year)
+          mark.states[i,g:end.year] <- 1
+          tel.z.states[i,g:end.year] <- 1
+          if(mark.life>1&mark.protocol==1){ #if we don't replace marks on capture, make ineligible
+            if(g<n.year){
+              eligible.states[i,(g+1):end.year] <- 0
+            }
           }
         }
       }
     }
   }
+  if(sum(mark.deploy)==0)stop("No individuals marked. Reconsider parameter settings.")
   
   #switch states to observed deaths when z==0 
   tel.z.states[which(tel.z.states==1&z==0)] <- 0
@@ -242,7 +248,7 @@ sim.JS.SMR.Dcov.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   }
   
   #simulate telemetry locations for all collared years
-  if(n.tel.locs>0&sum(y.mark)>0){
+  if(n.tel.locs>0&sum(mark.states)>0){
     n.tel.years.vec <- rowSums(tel.z.states==1,na.rm=TRUE)
     tel.ID <- which(n.tel.years.vec>0)
     n.tel.inds <- length(tel.ID)
@@ -316,15 +322,26 @@ sim.JS.SMR.Dcov.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   
   #renumber ID.marked and ID.marked.all in new order after discarding unmarked guys in numbering
   #reorder y, z, s first
-  ID.unmarked.all <- setdiff(1:N.super,ID.marked.all)
-  s <- s[c(ID.marked.all,ID.unmarked.all),]
-  z <- z[c(ID.marked.all,ID.unmarked.all),]
-  y.mark <- y.mark[c(ID.marked.all,ID.unmarked.all),,]
-  y <- y[c(ID.marked.all,ID.unmarked.all),,]
+  # ID.unmarked.all <- setdiff(1:N.super,ID.marked.all)
+  # s <- s[c(ID.marked.all,ID.unmarked.all),]
+  # z <- z[c(ID.marked.all,ID.unmarked.all),]
+  # y.mark <- y.mark[c(ID.marked.all,ID.unmarked.all),,]
+  # y <- y[c(ID.marked.all,ID.unmarked.all),,]
+  ID.cap.unmarked.all <- setdiff(ID.cap.all,ID.marked.all)
+  ID.unobserved.all <- setdiff(1:N.super,c(ID.marked.all,ID.cap.unmarked.all))
+  ID.order <- c(ID.marked.all,ID.cap.unmarked.all,ID.unobserved.all)
+  s <- s[ID.order,]
+  s.cell <- s.cell[ID.order]
+  z <- z[ID.order,]
+  y.mark <- y.mark[ID.order,,]
+  y <- y[ID.order,,]
+  mark.caps <- mark.caps[ID.order,]
+  mark.deploy <- mark.deploy[ID.order,]
   #update truth
   truth$s <- s
   truth$z <- z
   truth$y <- y
+  truth$y.mark <- y.mark
   
   #reorder marked guys
   for(g in 1:n.year){
@@ -338,11 +355,15 @@ sim.JS.SMR.Dcov.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   }
   ID.marked.all <- 1:n.marked.all
   
-  #discard uncaptured individuals in marking process. keep all marked individuals across years
-  y.mark <- y.mark[ID.marked.all,,]
+  #discard uncaptured individuals in marking process. keep marked and unmarked (no mark deployed) captured in marking process
+  y.mark <- y.mark[1:n.cap.all,,,drop=FALSE]
+  ID.cap.all <- 1:n.cap.all
+  mark.caps <- mark.caps[1:n.cap.all,,drop=FALSE]
+  mark.deploy <- mark.deploy[1:n.cap.all,,drop=FALSE]
   
   return(list(y.mark=y.mark,y.mID=y.mID,y.mnoID=y.mnoID,y.um=y.um,y.unk=y.unk, #observed data
               n.year=n.year,n.marked=n.marked,n.marked.all=n.marked.all,
+              ID.cap.all=ID.cap.all,n.cap.all=n.cap.all,mark.deploy=mark.deploy,mark.caps=mark.caps,
               locs=locs,n.tel.inds=n.tel.inds,n.tel.years=n.tel.years,tel.year=tel.year,
               n.locs.ind=n.locs.ind,tel.ID=tel.ID,tel.ID.g=tel.ID.g,
               ID.marked=ID.marked,ID.marked.all=ID.marked.all,

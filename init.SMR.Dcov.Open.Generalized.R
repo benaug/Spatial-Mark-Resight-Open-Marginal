@@ -5,10 +5,11 @@ e2dist <- function (x, y){
 }
 
 init.SMR.Dcov.Open.Generalized <- function(data,inits=NA,M=NA){
-  if(M < (data$n.marked.all)+1) stop("M must be larger than the number of marked individuals plus at least one unmarked individual.")
+  if(M < (data$n.cap.all)+1) stop("M must be larger than the number of captured individuals plus at least one unmarked individual.")
   library(abind)
   n.marked <- data$n.marked
   n.marked.all <- data$n.marked.all
+  n.cap.all <- data$n.cap.all
   n.year <- data$n.year
   mark.states <- matrix(0,M,n.year)
   mark.states[1:n.marked.all,] <- data$mark.states
@@ -29,7 +30,7 @@ init.SMR.Dcov.Open.Generalized <- function(data,inits=NA,M=NA){
   
   #augment y.mark and y.mnoID, pull out y.mnoID, y.um, y.unk
   y.mark <- array(0,dim=c(M,n.year,J.mark.max))
-  y.mark[1:n.marked.all,,] <- data$y.mark
+  y.mark[1:n.cap.all,,] <- data$y.mark
   y.mID <- array(0,dim=c(n.marked.all,n.year,J.sight.max))
   y.mID[1:n.marked.all,,] <- data$y.mID
   y.mnoID <- data$y.mnoID
@@ -64,10 +65,11 @@ init.SMR.Dcov.Open.Generalized <- function(data,inits=NA,M=NA){
   #assign random locations to assign latent ID samples to individuals
   s.init <- cbind(runif(M,xlim[1],xlim[2]), runif(M,ylim[1],ylim[2]))
   
-  #but update s.inits for marked individuals before assigning latent detections
-  has.mark <- apply(y.mark[1:n.marked.all,,],1,sum)>0
-  has.mID <- rowSums(y.mID)>0
-  has.tel <- (1:n.marked.all)%in%data$tel.ID
+  #but update s.inits for marked individuals (and unmarked captured in marking process) before assigning latent detections
+  has.mark <- apply(y.mark[1:n.cap.all,,],1,sum)>0
+  has.mID <- rep(FALSE,n.cap.all)
+  has.mID[1:n.marked.all] <- rowSums(y.mID)>0
+  has.tel <- (1:n.cap.all)%in%data$tel.ID
   idx <- which(has.mark|has.mID|has.tel)
   
   for(i in idx){
@@ -77,9 +79,11 @@ init.SMR.Dcov.Open.Generalized <- function(data,inits=NA,M=NA){
         trps.g <- matrix(X.mark[g,which(y.mark[i,g,]>0),,drop=FALSE],ncol=2,byrow=FALSE)
         trps <- rbind(trps,trps.g)
       }
-      if(sum(y.mID[i,g,])>0){
-        trps.g <- matrix(X.sight[g,which(y.mID[i,g,]>0),,drop=FALSE],ncol=2,byrow=FALSE)
-        trps <- rbind(trps,trps.g)
+      if(i<=n.marked.all){
+        if(sum(y.mID[i,g,])>0){
+          trps.g <- matrix(X.sight[g,which(y.mID[i,g,]>0),,drop=FALSE],ncol=2,byrow=FALSE)
+          trps <- rbind(trps,trps.g)
+        }
       }
     }
     if(i%in%data$tel.ID){
@@ -154,7 +158,8 @@ init.SMR.Dcov.Open.Generalized <- function(data,inits=NA,M=NA){
   #initialize z, start with observed guys
   z.init <- matrix(0,M,n.year)
   z.start.init <- z.stop.init <- rep(0,M)
-  y.true2D <- 1*(apply(y.true,c(1,2),sum)>0)
+  y.mark2D <- apply(y.mark,c(1,2),sum)
+  y.true2D <- 1*((apply(y.true,c(1,2),sum)+y.mark2D)>0)
   y.true2D[tel.z.states==1] <- 1
   z.init <- 1*(y.true2D>0)
   N.super.init <- sum(rowSums(z.init)>0)
@@ -167,8 +172,7 @@ init.SMR.Dcov.Open.Generalized <- function(data,inits=NA,M=NA){
     }
   }
   z.super.init <- 1*(z.start.init>0)
-  z.obs <- 1*(rowSums(y.true)>0) #indicator for "ever observed"
-  
+
   if(any(tel.z.states[z.init==1]==0))stop("At least one z initialized to 1 when tel.z.states=0. Bug in initialization code.")
 
   #initialize N structures from z.init
@@ -180,12 +184,15 @@ init.SMR.Dcov.Open.Generalized <- function(data,inits=NA,M=NA){
   }
   
   #get y2D constraints for z.start and z.stop update
-  y.mark2D <- apply(y.mark,c(1,2),sum)
-  y.mID2D <- apply(y.mID,c(1,2),sum)
-  y2D <- apply(y.mID,c(1,2),sum) + apply(y.mark[1:n.marked.all,,],c(1,2),sum)
+  y.mID2D <- matrix(0,M,n.year)
+  y.mID2D[1:n.marked.all,] <- apply(y.mID,c(1,2),sum)
+  y2D <- y.mark2D + y.mID2D
   #add telemetry states - using these instead of marked states since you can be marked and dead (how you observe telemetry death)
   for(i in 1:n.marked.all){
-    y2D[data$tel.ID[i],which(data$tel.z.states[data$tel.ID[i],]>0)] <- 1
+    idx <- which(tel.z.states[i,]==1)
+    if(length(idx)>0){
+      y2D[i,idx] <- 1
+    }
   }
   
   #check starting logProbs one session at a time
@@ -205,21 +212,24 @@ init.SMR.Dcov.Open.Generalized <- function(data,inits=NA,M=NA){
     lamd <- lam0[g]*exp(-D.sight*D.sight/(2*sigma[g]*sigma[g]))
     #marked with ID obs
     if(n.marked[g]>0){
-      logProb <- array(0,dim=c(n.marked[g],J.sight[g]))
-      for(i in 1:n.marked[g]){
+      marked.inds <- which(mark.states[,g]==1)
+      logProb <- array(0,dim=c(length(marked.inds),J.sight[g]))
+      for(ii in 1:length(marked.inds)){
+        i <- marked.inds[ii]
         for(j in 1:J.sight[g]){
-          logProb[i,j] <- dpois(y.mID[i,g,j],lamd[i,j]*K1D.sight[g,j],log=TRUE)
+          logProb[ii,j] <- dpois(y.mID[i,g,j],lamd[i,j]*K1D.sight[g,j],log=TRUE)
         }
       }
       if(!is.finite(sum(logProb)))stop(paste("Starting observation model likelihood not finite. Marked with ID observations, year",g))
     }
     #marked no ID obs
     logProb <- rep(0,J.sight[g])
-    if(n.marked[g]>1){
-      lamd.mnoID <- colSums(lamd[1:n.marked[g],1:J.sight[g]])
-    }else if(n.marked[g]==1){
-      lamd.mnoID <- lamd[n.marked[g],1:J.sight[g]]
-    }else{#no marked guys
+    marked.inds <- which(mark.states[,g]==1)
+    if(length(marked.inds)>1){
+      lamd.mnoID <- colSums(lamd[marked.inds,1:J.sight[g],drop=FALSE])
+    }else if(length(marked.inds)==1){
+      lamd.mnoID <- lamd[marked.inds,1:J.sight[g]]
+    }else{
       lamd.mnoID <- rep(0,J.sight[g])
     }
     for(j in 1:J.sight[g]){
@@ -228,7 +238,8 @@ init.SMR.Dcov.Open.Generalized <- function(data,inits=NA,M=NA){
     if(!is.finite(sum(logProb)))stop(paste("Starting observation model likelihood not finite. Marked with no ID observations, year",g))
     #um obs
     logProb <- rep(0,J.sight[g])
-    lamd.um <- colSums(lamd[(n.marked[g]+1):M,1:J.sight[g]])
+    unmarked.inds <- which(mark.states[,g]==0)
+    lamd.um <- colSums(lamd[unmarked.inds,1:J.sight[g],drop=FALSE])
     for(j in 1:J.sight[g]){
       logProb[j] <- dpois(y.um[g,j],lamd.um[j]*K1D.sight[g,j])
     }

@@ -16,9 +16,10 @@ cols1 <- brewer.pal(9,"Greens")
 n.year <- 6 #number of years
 phi <- rep(0.8,n.year-1) #yearly per-capita recruitment
 gamma <- rep(0.2,n.year-1) #yearly per-capita recruitment
-p0 <- rep(0.1,n.year) #marking process p0
+p0 <- rep(0.25,n.year) #marking process p0
 lam0 <- rep(0.25,n.year) #sighting process lam0
 sigma <- rep(0.5,n.year) #yearly detection function scale
+p.mark <- rep(0.75,n.year) #yearly probability of marking given captured in marking process
 #Number of occasions per year per method
 #to skip sampling by a method in a year, set its K=0
 K.mark <- c(5,0,0,5,0,0) #yearly marking occasions
@@ -147,25 +148,27 @@ data <- sim.JS.SMR.Dcov.Generalized(D.beta0=D.beta0,D.beta1=D.beta1,D.cov=D.cov,
             p0=p0,lam0=lam0,sigma=sigma,K.mark=K.mark,K.sight=K.sight,
             X.mark=X.mark,X.sight=X.sight,xlim=xlim,ylim=ylim,res=res,
             mark.year.pars=mark.year.pars,mark.protocol=mark.protocol,
-            n.tel.locs=n.tel.locs)
+            p.mark=p.mark,n.tel.locs=n.tel.locs)
 
 #what is observed data? Note data objects have all n.years with all 0 data if no effort for a method
 #Could be structured without years with no effort, but that would require more work changing custom
 #N/z updates.
 
-# str(data$y.mark) #marking process history: n.marked.all x n.year x J.mark.max
-# str(data$y.mID) #marked with ID sighting history: n.marked.all x n.year x J.sight.max
-# str(data$y.mnoID) #marked with no ID sighting history: n.year x J.sight.max
-# str(data$y.um) #unmarked sighting history: n.year x J.sight.max
-# str(data$y.unk) #unknown marked status sighting history: n.year x J.sight.max
-# str(data$mark.states) #mark status history: n.marked.all x n.year
-# str(data$tel.z.states) #telemetry survival observations: n.marked.all x n.year
-# str(data$locs) #telemetry locations: n.tel.inds x n.year x n.tel.locs x 2
+#str(data$y.mark) #marking process history: n.cap.all x n.year x J.mark.max.
+#total number captured (n.cap.all) might be > total number ever marked (n.marked.all). 
+#if so, marked individuals must be first, then captured but unmarked individuals
+#str(data$y.mID) #marked with ID sighting history: n.marked.all x n.year x J.sight.max
+#str(data$y.mnoID) #marked with no ID sighting history: n.year x J.sight.max
+#str(data$y.um) #unmarked sighting history: n.year x J.sight.max
+#str(data$y.unk) #unknown marked status sighting history: n.year x J.sight.max
+#str(data$mark.states) #mark status history: n.marked.all x n.year
+#str(data$tel.z.states) #telemetry survival observations: n.marked.all x n.year
+#str(data$locs) #telemetry locations: n.tel.inds x n.year x n.tel.locs x 2
 
 data$N #yearly abundance
-colSums(apply(data$y.mark>0,c(1,2),sum)>0) #marks deployed per year 
-#(actually this ^ is only true if mark.protocol=2, will over count with 
-#mark.protocol=1, need to fix that, but not important for fitting model)
+colSums(apply(data$y.mark>0,c(1,2),sum)>0) #total marking process captures per year
+colSums(data$mark.deploy) #total marks deployed per year
+rowSums(data$mark.deploy) #total marks deployed per captured individual
 data$n.marked #marks active per year
 
 #total detected individuals
@@ -239,8 +242,10 @@ M <- 250 #data augmentation level.
 #initialize N and z objects and activity centers
 if(M < (data$n.marked.all)+1) stop("M must be larger than the number of marked individuals plus at least one unmarked individual.")
 #pull these from data (won't be in environment if not simulated directly above)
-n.year <- data$n.year
-n.marked <- data$n.marked
+n.year <- data$n.year #number of primary sessions
+n.marked <- data$n.marked #number of individuals carrying a mark in each year
+n.marked.all <- data$n.marked.all #total number of individuals ever marked
+n.cap.all <- data$n.cap.all #total number of individuals ever captured (might be every marked individual)
 J.mark <- data$J.mark
 J.sight <- data$J.sight
 K.mark <- data$K.mark
@@ -353,7 +358,7 @@ z.nodes <- Rmodel$expandNodeNames(paste0("z[1:",M,",1]"))
 tel.z.states.nodes <- Rmodel$expandNodeNames(paste0("tel.z.states[1:",M,",1]"))
 calcNodes <- c(N.nodes,N.recruit.nodes,y.mark.nodes,y.um.nodes,y.unk.nodes,z.nodes) #the ones that need likelihoods updated in mvSaved
 conf$addSampler(target = c("z"),
-                type = 'zSampler',control = list(M=M,n.marked.all=nimbuild$n.marked.all,
+                type = 'zSampler',control = list(M=M,n.marked.all=n.marked.all,n.cap.all=n.cap.all,
                                                  n.year=n.year,J.mark=J.mark,J.sight=J.sight,
                                                  mark.years=mark.years,sight.years=sight.years,
                                                  n.mark.years=n.mark.years,
@@ -411,7 +416,8 @@ time1 <- end.time-start.time  # total time for compilation, replacing samplers, 
 time2 <- end.time-start.time2 # post-compilation run time
 
 mvSamples <- as.matrix(Cmcmc$mvSamples)
-plot(mcmc(mvSamples[-c(1:250),]))
+burnin <- 500
+plot(mcmc(mvSamples[-c(1:burnin),]))
 
 #reminder what some targets are
 data$N
@@ -422,20 +428,20 @@ data$N[1] + sum(data$N.recruit) #N.super
 #check posterior correlations, removing things we can't improve
 rem.idx <- c(grep("N",colnames(mvSamples)),
              grep("theta",colnames(mvSamples)))
-tmp <- cor(mvSamples[-c(1:500),-rem.idx])
+tmp <- cor(mvSamples[-c(1:burnin),-rem.idx])
 diag(tmp) <- NA
 which(abs(tmp)>0.5,arr.ind=TRUE)
 
 
 #Plot N by year with method and mark info
-marks.deployed <- colSums(apply(data$y.mark>0,c(1,2),sum)>0) #marks deployed per year
+marks.deployed <- colSums(data$mark.deploy) #marks deployed per year
 marks.active <- data$n.marked #marks active per year
 methods <- ifelse(K.mark > 0 & K.sight > 0, "M-S",
                   ifelse(K.mark > 0, "M",
                          ifelse(K.sight > 0, "S", NA)))
 
 library(vioplot)
-vioplot(mvSamples[-c(1:500),3:(n.year+2)],ylim=c(0,200),
+vioplot(mvSamples[-c(1:burnin),3:(n.year+2)],ylim=c(0,200),
         xlim=c(-0.5,n.year+0.5),ylab="Abundance",line=3)
 mtext("Method(s) Used",3,at=0,line=2)
 mtext(methods,3,at=1:n.year,line=2)
