@@ -126,7 +126,7 @@ init.SMR.Dcov.Open.Generalized <- function(data,inits=NA,M=NA){
     this.cell <- data$cells[trunc(s.init[i,1]/data$res)+1,trunc(s.init[i,2]/data$res)+1]
     if(data$InSS[this.cell]==0){
       cands <- alldists[i,]
-      new.cell <- which(alldists[i,]==min(alldists[i,]))
+      new.cell <- which(alldists[i,]==min(alldists[i,]))[1]
       s.init[i,] <- data$dSS[new.cell,]
     }
   }
