@@ -157,10 +157,10 @@ data <- sim.JS.SMR.Dcov.Generalized(D.beta0=D.beta0,D.beta1=D.beta1,D.cov=D.cov,
 #str(data$y.mark) #marking process history: n.cap.all x n.year x J.mark.max.
 #total number captured (n.cap.all) might be > total number ever marked (n.marked.all). 
 #if so, marked individuals must be first, then captured but unmarked individuals
-#str(data$y.mID) #marked with ID sighting history: n.marked.all x n.year x J.sight.max
-#str(data$y.mnoID) #marked with no ID sighting history: n.year x J.sight.max
-#str(data$y.um) #unmarked sighting history: n.year x J.sight.max
-#str(data$y.unk) #unknown marked status sighting history: n.year x J.sight.max
+#str(data$y.mID) #marked with ID sighting history: n.marked.all x n.year x J.sight.max x K.sight.max
+#str(data$y.mnoID) #marked with no ID sighting history: n.year x J.sight.max x K.sight.max
+#str(data$y.um) #unmarked sighting history: n.year x J.sight.max x K.sight.max
+#str(data$y.unk) #unknown marked status sighting history: n.year x J.sight.max x K.sight.max
 #str(data$mark.states) #mark status history: n.marked.all x n.year
 #str(data$tel.z.states) #telemetry survival observations: n.marked.all x n.year
 #str(data$locs) #telemetry locations: n.tel.inds x n.year x n.tel.locs x 2
