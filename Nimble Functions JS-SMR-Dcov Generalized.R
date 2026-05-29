@@ -30,7 +30,8 @@ rSurvivalTel <- nimbleFunction(
 
 #telemetry location vector distribution
 dNormVector <- nimbleFunction(
-  run = function(x = double(2), s = double(1), sigma = double(0), n.locs.ind = double(0), log = integer(0)) {
+  run = function(x = double(2), s = double(1), sigma = double(0), n.locs.ind = double(0),
+                 max.n.tel.locs = double(0), log = integer(0)) {
     returnType(double(0))
     logProb <- 0
     if(n.locs.ind>0){
@@ -40,12 +41,15 @@ dNormVector <- nimbleFunction(
       }
     }
     return(logProb) 
-  })
+  }
+)
 
 rNormVector <- nimbleFunction(
-  run = function(n = integer(0), s = double(1), sigma = double(0), n.locs.ind = double(0)) {
+  run = function(n = integer(0), s = double(1), sigma = double(0), n.locs.ind = double(0),
+                 max.n.tel.locs = double(0)) {
     returnType(double(2))
-    return(matrix(0,n.locs.ind,2))
+    out <- matrix(0,nrow=max.n.tel.locs,ncol=2)
+    return(out)
   }
 )
 

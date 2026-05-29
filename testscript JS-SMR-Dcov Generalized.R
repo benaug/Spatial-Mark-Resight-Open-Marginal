@@ -263,6 +263,8 @@ y.vals <- data$y.vals
 n.cells <- data$n.cells
 n.cells.x <- data$n.cells.x
 n.cells.y <- data$n.cells.y
+max.n.tel.locs <- dim(data$locs)[3]
+
 #Need some inits to initialize data
 #Use reasonable inits for lam0 and sigma since we check to make sure initial observation
 #model likelihood is finite
@@ -305,7 +307,7 @@ constants <- list(n.year=n.year,M=M,J.mark=J.mark,J.sight=J.sight,xlim=xlim,ylim
                   K1D.mark=nimbuild$K1D.mark,K1D.sight=nimbuild$K1D.sight,
                   D.cov=D.cov,cellArea=cellArea,n.cells=n.cells,res=res,
                   n.marked.all=nimbuild$n.marked.all,
-                  n.tel.years=data$n.tel.years,tel.year=data$tel.year,
+                  n.tel.years=data$n.tel.years,tel.year=data$tel.year,max.n.tel.locs=max.n.tel.locs,
                   tel.ID=data$tel.ID,n.tel.inds=data$n.tel.inds,n.locs.ind=data$n.locs.ind,
                   mark.years=mark.years,sight.years=sight.years,n.mark.years=n.mark.years,
                   n.sight.years=n.sight.years)
