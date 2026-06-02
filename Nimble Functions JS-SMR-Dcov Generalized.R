@@ -217,6 +217,7 @@ zSampler <- nimbleFunction(
     z.super.ups <- control$z.super.ups
     n.year <- control$n.year
     z.nodes <- control$z.nodes
+    tel.z.states.nodes <- control$tel.z.states.nodes
     y.mark.nodes <- control$y.mark.nodes
     y.um.nodes <- control$y.um.nodes
     y.unk.nodes <- control$y.unk.nodes
