@@ -373,7 +373,7 @@ N.recruit.nodes <- Rmodel$expandNodeNames(paste0("N.recruit[1:",n.year-1,"]"))
 ER.nodes <- Rmodel$expandNodeNames(paste0("ER[1:",n.year-1,"]"))
 z.nodes <- Rmodel$expandNodeNames(paste0("z[1:",M,",1]"))
 tel.z.states.nodes <- Rmodel$expandNodeNames(paste0("tel.z.states[1:",M,",1]"))
-calcNodes <- c(N.nodes,N.recruit.nodes,y.mark.nodes,y.um.nodes,y.unk.nodes,z.nodes) #the ones that need likelihoods updated in mvSaved
+calcNodes <- c(N.nodes,N.recruit.nodes,y.mark.nodes,y.um.nodes,y.unk.nodes,z.nodes,tel.z.states.nodes) #the ones that need likelihoods updated in mvSaved
 conf$addSampler(target = c("z"),
                 type = 'zSampler',control = list(M=M,n.marked.all=n.marked.all,n.cap.all=n.cap.all,
                                                  n.year=n.year,J.mark=J.mark,J.sight=J.sight,
