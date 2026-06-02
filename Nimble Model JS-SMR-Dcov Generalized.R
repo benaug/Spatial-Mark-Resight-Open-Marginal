@@ -85,7 +85,7 @@ NimModel <- nimbleCode({
   }
   #sighting process
   for(g in 1:n.sight.years){
-    lam0[g] ~ dunif(0,1) #lam0 varies by year
+    lam0[g] ~ dunif(0,5) #lam0 varies by year
     for(i in 1:M){
       lam[i,sight.years[g],
           1:J.sight[sight.years[g]]] <- GetDetectionRate(s=s[i,1:2],
