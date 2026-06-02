@@ -154,16 +154,18 @@ data <- sim.JS.SMR.Dcov.Generalized(D.beta0=D.beta0,D.beta1=D.beta1,D.cov=D.cov,
 #Could be structured without years with no effort, but that would require more work changing custom
 #N/z updates.
 
+#mark and sight data summed over occasions
 #str(data$y.mark) #marking process history: n.cap.all x n.year x J.mark.max.
 #total number captured (n.cap.all) might be > total number ever marked (n.marked.all). 
 #if so, marked individuals must be first, then captured but unmarked individuals
-#str(data$y.mID) #marked with ID sighting history: n.marked.all x n.year x J.sight.max x K.sight.max
-#str(data$y.mnoID) #marked with no ID sighting history: n.year x J.sight.max x K.sight.max
-#str(data$y.um) #unmarked sighting history: n.year x J.sight.max x K.sight.max
-#str(data$y.unk) #unknown marked status sighting history: n.year x J.sight.max x K.sight.max
+#str(data$y.mID) #marked with ID sighting history: n.marked.all x n.year x J.sight.max
+#str(data$y.mnoID) #marked with no ID sighting history: n.year x J.sight.max
+#str(data$y.um) #unmarked sighting history: n.year x J.sight.max
+#str(data$y.unk) #unknown marked status sighting history: n.year x J.sight.max
 #str(data$mark.states) #mark status history: n.marked.all x n.year
 #str(data$tel.z.states) #telemetry survival observations: n.marked.all x n.year
-#str(data$locs) #telemetry locations: n.tel.inds x n.year x n.tel.locs x 2
+#str(data$locs) #telemetry locations: n.tel.inds x n.tel.years.max x n.tel.locs.max x 2
+#use tel.ID and tel.year to map to individual and population year
 
 data$N #yearly abundance
 colSums(apply(data$y.mark>0,c(1,2),sum)>0) #total marking process captures per year

@@ -10,7 +10,6 @@ sSamplerDcov <- nimbleFunction(
     ylim <- control$ylim
     n.cells.x <- control$n.cells.x
     n.cells.y <- control$n.cells.y
-    n.locs.ind <- control$n.locs.ind
     n.marked.all <- control$n.marked.all
     n.year <- control$n.year
     mark.states <- control$mark.states
