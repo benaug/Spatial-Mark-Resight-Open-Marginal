@@ -279,7 +279,7 @@ nimbuild <- init.SMR.Dcov.Open.Generalized(data,inits,M=M)
 
 #make sure that if we know an individual is marked in year g, it is known to be alive in year g
 #otherwise, how would you know it still has a mark?
-mark.consistency <- which(data$mark.states2D==1&nimbuild$y2D[1:data$n.marked.all,]==0,arr.ind=TRUE)
+mark.consistency <- which(data$mark.states==1&nimbuild$y2D[1:data$n.marked.all,]==0,arr.ind=TRUE)
 if(nrow(mark.consistency)==0){
   print("mark state consistency check passed")
 }else{
