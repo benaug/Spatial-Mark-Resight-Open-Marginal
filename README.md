@@ -18,6 +18,10 @@ the approach of Herliansyah et al. (2024, section 4.3) in the custom N/z and act
 
 https://link.springer.com/article/10.1007/s13253-023-00598-3
 
+For sighting observation models other than Poisson, we can no longer marginalize out individual ID and must sample them.
+See here for conditional versions:
+
+https://github.com/benaug/Spatial-Mark-Resight-Open-Conditional
 
 Currently, I assume 1) the mark status does not change within a primary occasion (no interspersed marking and resighting), and 
 2) the mark status of all marked individuals is known in all years. This likely limits us to marks that are telemetry (GPS) collars.
