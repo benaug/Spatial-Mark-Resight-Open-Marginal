@@ -10,7 +10,7 @@ init.SMR.Dcov.Open.Generalized.Interspersed <- function(data,inits=NA,M=NA){
   n.marked <- data$n.marked
   n.marked.all <- data$n.marked.all
   n.cap.all <- data$n.cap.all
-  n.year <- data$n.year
+  n.primary <- data$n.primary
   J.mark <- unlist(lapply(data$X.mark,nrow)) #traps per year
   J.sight <- unlist(lapply(data$X.sight,nrow)) #traps per year
   J.mark.max <- max(J.mark)
@@ -20,32 +20,32 @@ init.SMR.Dcov.Open.Generalized.Interspersed <- function(data,inits=NA,M=NA){
   K.mark.max <- max(K.mark)
   K.sight.max <- max(K.sight)
   locs <- data$locs
-  mark.states2D <- matrix(0,M,n.year)
+  mark.states2D <- matrix(0,M,n.primary)
   mark.states2D[1:n.marked.all,] <- data$mark.states2D
-  mark.states <- array(0,dim=c(M,n.year,K.sight.max))
+  mark.states <- array(0,dim=c(M,n.primary,K.sight.max))
   mark.states[1:n.marked.all,,] <- data$mark.states
   #augment tel.z.states, code NA as 2
-  tel.z.states <- matrix(2,M,n.year)
+  tel.z.states <- matrix(2,M,n.primary)
   tel.z.states[1:n.marked.all,] <- data$tel.z.states
   tel.z.states[is.na(tel.z.states)] <- 2  #use 2 to code NA for nimble function
 
   #augment y.mark and y.mnoID, pull out y.mnoID, y.um, y.unk
-  y.mark <- array(0,dim=c(M,n.year,J.mark.max))
+  y.mark <- array(0,dim=c(M,n.primary,J.mark.max))
   y.mark[1:n.cap.all,,] <- data$y.mark
-  y.mID <- array(0,dim=c(n.marked.all,n.year,J.sight.max,K.sight.max))
+  y.mID <- array(0,dim=c(n.marked.all,n.primary,J.sight.max,K.sight.max))
   y.mID[1:n.marked.all,,,] <- data$y.mID
   y.mnoID <- data$y.mnoID
   y.um <- data$y.um
   y.unk <- data$y.unk
   
   #reformat these
-  # tel.inds <- matrix(0,max(n.marked),n.year)
-  ID.marked <- matrix(0,max(n.marked),n.year)
-  X.mark <- array(0,dim=c(n.year,J.mark.max,2))
-  K1D.mark <- matrix(0,n.year,J.mark.max)
-  X.sight <- array(0,dim=c(n.year,J.sight.max,2))
-  K2D.sight <- array(0,dim=c(n.year,J.sight.max,K.sight.max))
-  for(g in 1:n.year){
+  # tel.inds <- matrix(0,max(n.marked),n.primary)
+  ID.marked <- matrix(0,max(n.marked),n.primary)
+  X.mark <- array(0,dim=c(n.primary,J.mark.max,2))
+  K1D.mark <- matrix(0,n.primary,J.mark.max)
+  X.sight <- array(0,dim=c(n.primary,J.sight.max,2))
+  K2D.sight <- array(0,dim=c(n.primary,J.sight.max,K.sight.max))
+  for(g in 1:n.primary){
     if(n.marked[g]>0){
       ID.marked[1:n.marked[g],g] <- data$ID.marked[[g]]
     }
@@ -76,7 +76,7 @@ init.SMR.Dcov.Open.Generalized.Interspersed <- function(data,inits=NA,M=NA){
   
   for(i in idx){
     trps <- matrix(0,nrow=0,ncol=2) #get locations of traps of capture across years for ind i
-    for(g in 1:n.year){
+    for(g in 1:n.primary){
       if(sum(y.mark[i,g,])>0){
         trps.g <- matrix(X.mark[g,which(y.mark[i,g,]>0),,drop=FALSE],ncol=2,byrow=FALSE)
         trps <- rbind(trps,trps.g)
@@ -134,10 +134,10 @@ init.SMR.Dcov.Open.Generalized.Interspersed <- function(data,inits=NA,M=NA){
     }
   }
   
-  y.true <- array(0,dim=c(M,n.year,J.sight.max,K.sight.max))
+  y.true <- array(0,dim=c(M,n.primary,J.sight.max,K.sight.max))
   y.true[1:n.marked.all,,,] <- y.mID
   
-  for(g in 1:n.year){
+  for(g in 1:n.primary){
     D <- e2dist(s.init,X.sight[g,1:J.sight[g],])
     lamd <- lam0[g]*exp(-D*D/(2*sigma[g]*sigma[g]))
     for(j in 1:J.sight[g]){
@@ -168,7 +168,7 @@ init.SMR.Dcov.Open.Generalized.Interspersed <- function(data,inits=NA,M=NA){
     }
   }
   #initialize z, start with observed guys
-  z.init <- matrix(0,M,n.year)
+  z.init <- matrix(0,M,n.primary)
   z.start.init <- z.stop.init <- rep(0,M)
   y.mark2D <- apply(y.mark,c(1,2),sum)
   y.true2D <- 1*((apply(y.true,c(1,2),sum)+y.mark2D)>0)
@@ -189,14 +189,14 @@ init.SMR.Dcov.Open.Generalized.Interspersed <- function(data,inits=NA,M=NA){
 
   #initialize N structures from z.init
   N.init <- colSums(z.init[z.super.init==1,])
-  N.survive.init <- N.recruit.init <- rep(NA,n.year-1)
-  for(g in 2:n.year){
+  N.survive.init <- N.recruit.init <- rep(NA,n.primary-1)
+  for(g in 2:n.primary){
     N.survive.init[g-1] <- sum(z.init[,g-1]==1&z.init[,g]==1&z.super.init==1)
     N.recruit.init[g-1] <- N.init[g]-N.survive.init[g-1]
   }
   
   #get y2D constraints for z.start and z.stop update
-  y.mID2D <- matrix(0,M,n.year)
+  y.mID2D <- matrix(0,M,n.primary)
   y.mID2D[1:n.marked.all,] <- apply(y.mID,c(1,2),sum)
   y2D <- y.mark2D + y.mID2D
   for(i in 1:n.marked.all){
@@ -207,7 +207,7 @@ init.SMR.Dcov.Open.Generalized.Interspersed <- function(data,inits=NA,M=NA){
   }
   
   #check starting logProbs one session at a time
-  for(g in 1:n.year){
+  for(g in 1:n.primary){
     #marking process
     D.mark <- e2dist(s.init, X.mark[g,1:J.mark[g],])
     pd <- p0[g]*exp(-D.mark*D.mark/(2*sigma[g]*sigma[g]))

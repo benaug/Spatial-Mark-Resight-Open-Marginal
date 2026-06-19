@@ -12,7 +12,7 @@ sSamplerDcov <- nimbleFunction(
     n.cells.x <- control$n.cells.x
     n.cells.y <- control$n.cells.y
     n.marked.all <- control$n.marked.all
-    n.year <- control$n.year
+    n.primary <- control$n.primary
     mark.states <- control$mark.states
     ## control list extraction
     # logScale            <- extractControlElement(control, 'log',                 FALSE)
@@ -32,16 +32,16 @@ sSamplerDcov <- nimbleFunction(
     if(length(loc.nodes)>0){
       s.nodes <- c(s.nodes,loc.nodes)
     }
-    pd.nodes <- model$expandNodeNames(paste("pd[",i,",1:",n.year,",1:",max(J.mark),"]"))
-    lam.nodes <- model$expandNodeNames(paste("lam[",i,",1:",n.year,",1:",max(J.sight),"]"))
-    y.mark.nodes <- model$expandNodeNames(paste("y.mark[",i,",1:",n.year,",1:",max(J.mark),"]"))
-    y.mID.nodes <- model$expandNodeNames(paste("y.mID[",i,",1:",n.year,",1:",max(J.sight),",1:",max(K.sight),"]"))
-    y.mnoID.nodes <- model$expandNodeNames(paste("y.mnoID[1:",n.year,",1:",max(J.sight),",1:",max(K.sight),"]"))
-    y.um.nodes <- model$expandNodeNames(paste("y.um[1:",n.year,",1:",max(J.sight),",1:",max(K.sight),"]"))
-    y.unk.nodes <- model$expandNodeNames(paste("y.unk[1:",n.year,",1:",max(J.sight),",1:",max(K.sight),"]"))
-    lam.mnoID.nodes <- model$expandNodeNames(paste("lam.mnoID[1:",n.year,",1:",max(J.sight),",1:",max(K.sight),"]"))
-    lam.um.nodes <- model$expandNodeNames(paste("lam.um[1:",n.year,",1:",max(J.sight),",1:",max(K.sight),"]"))
-    lam.unk.nodes <- model$expandNodeNames(paste("lam.unk[1:",n.year,",1:",max(J.sight),",1:",max(K.sight),"]"))
+    pd.nodes <- model$expandNodeNames(paste("pd[",i,",1:",n.primary,",1:",max(J.mark),"]"))
+    lam.nodes <- model$expandNodeNames(paste("lam[",i,",1:",n.primary,",1:",max(J.sight),"]"))
+    y.mark.nodes <- model$expandNodeNames(paste("y.mark[",i,",1:",n.primary,",1:",max(J.mark),"]"))
+    y.mID.nodes <- model$expandNodeNames(paste("y.mID[",i,",1:",n.primary,",1:",max(J.sight),",1:",max(K.sight),"]"))
+    y.mnoID.nodes <- model$expandNodeNames(paste("y.mnoID[1:",n.primary,",1:",max(J.sight),",1:",max(K.sight),"]"))
+    y.um.nodes <- model$expandNodeNames(paste("y.um[1:",n.primary,",1:",max(J.sight),",1:",max(K.sight),"]"))
+    y.unk.nodes <- model$expandNodeNames(paste("y.unk[1:",n.primary,",1:",max(J.sight),",1:",max(K.sight),"]"))
+    lam.mnoID.nodes <- model$expandNodeNames(paste("lam.mnoID[1:",n.primary,",1:",max(J.sight),",1:",max(K.sight),"]"))
+    lam.um.nodes <- model$expandNodeNames(paste("lam.um[1:",n.primary,",1:",max(J.sight),",1:",max(K.sight),"]"))
+    lam.unk.nodes <- model$expandNodeNames(paste("lam.unk[1:",n.primary,",1:",max(J.sight),",1:",max(K.sight),"]"))
     # calcNodesNoSelf <- model$getDependencies(target, self = FALSE)
     # isStochCalcNodesNoSelf <- model$isStoch(calcNodesNoSelf)   ## should be made faster
     # calcNodesNoSelfDeterm <- calcNodesNoSelf[!isStochCalcNodesNoSelf]
@@ -103,7 +103,7 @@ sSamplerDcov <- nimbleFunction(
           #subtract these out before calculating lam
           bigLam.marked.proposed <- bigLam.marked.initial
           bigLam.unmarked.proposed <- bigLam.unmarked.initial
-          for(g in 1:n.year){
+          for(g in 1:n.primary){
             if(model$z[i,g]==1){ #z.super always 1 here
               for(k in 1:K.sight[g]){
                 bigLam.marked.proposed[g,1:J.sight[g],k] <- bigLam.marked.proposed[g,1:J.sight[g],k] - model$lam[i,g,1:J.sight[g]]*mark.states[g,k]
@@ -123,7 +123,7 @@ sSamplerDcov <- nimbleFunction(
           model$calculate(pd.nodes) #update pd nodes
           model$calculate(lam.nodes) #update lam nodes
           #add these in after calculating lam
-          for(g in 1:n.year){
+          for(g in 1:n.primary){
             if(model$z[i,g]==1){
               for(k in 1:K.sight[g]){
                 bigLam.marked.proposed[g,1:J.sight[g],k] <- bigLam.marked.proposed[g,1:J.sight[g],k] + model$lam[i,g,1:J.sight[g]]*mark.states[g,k]
@@ -152,7 +152,7 @@ sSamplerDcov <- nimbleFunction(
           lp.proposed.s <- model$calculate(s.nodes) #proposed logprob for s.nodes
           #subtract these out before calculating lam
           bigLam.unmarked.proposed <- bigLam.unmarked.initial
-          for(g in 1:n.year){ #z.super always 1 here
+          for(g in 1:n.primary){ #z.super always 1 here
             if(model$z[i,g]==1){
               for(k in 1:K.sight[g]){
                 bigLam.unmarked.proposed[g,1:J.sight[g],k] <- bigLam.unmarked.proposed[g,1:J.sight[g],k] - model$lam[i,g,1:J.sight[g]]
@@ -168,7 +168,7 @@ sSamplerDcov <- nimbleFunction(
           model$calculate(pd.nodes) #update pd nodes
           model$calculate(lam.nodes) #update lam nodes
           #add these in after calculating lam
-          for(g in 1:n.year){
+          for(g in 1:n.primary){
             if(model$z[i,g]==1){
               for(k in 1:K.sight[g]){
                 bigLam.unmarked.proposed[g,1:J.sight[g],k] <- bigLam.unmarked.proposed[g,1:J.sight[g],k] + model$lam[i,g,1:J.sight[g]]
