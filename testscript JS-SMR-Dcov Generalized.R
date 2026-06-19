@@ -164,8 +164,8 @@ data <- sim.JS.SMR.Dcov.Generalized(D.beta0=D.beta0,D.beta1=D.beta1,D.cov=D.cov,
 #str(data$y.unk) #unknown marked status sighting history: n.primary x J.sight.max
 #str(data$mark.states) #mark status history: n.marked.all x n.primary
 #str(data$tel.z.states) #telemetry survival observations: n.marked.all x n.primary
-#str(data$locs) #telemetry locations: n.tel.inds x n.tel.years.max x n.tel.locs.max x 2
-#use tel.ID and tel.year to map to individual and population year
+#str(data$locs) #telemetry locations: n.tel.inds x n.tel.sessions.max x n.tel.locs.max x 2
+#use tel.ID and tel.session to map to individual and population year
 
 data$N #yearly abundance
 colSums(apply(data$y.mark>0,c(1,2),sum)>0) #total marking process captures per year
@@ -212,7 +212,7 @@ for(g in 1:n.primary){
       }
       tel.idx <- which(data$tel.ID == id)
       if(length(tel.idx) > 0){
-        tel.g.idx <- which(data$tel.year[tel.idx,]==g)
+        tel.g.idx <- which(data$tel.session[tel.idx,]==g)
         if(length(tel.g.idx) > 0){
           nloc <- data$n.locs.ind[tel.idx,tel.g.idx]
           if(nloc>0){
@@ -324,7 +324,7 @@ constants <- list(n.primary=n.primary,M=M,J.mark=J.mark,J.sight=J.sight,xlim=xli
                   K1D.mark=nimbuild$K1D.mark,K1D.sight=nimbuild$K1D.sight,
                   D.cov=D.cov,cellArea=cellArea,n.cells=n.cells,res=res,
                   n.marked.all=nimbuild$n.marked.all,
-                  n.tel.years=data$n.tel.years,tel.year=data$tel.year,max.n.tel.locs=max.n.tel.locs,
+                  n.tel.sessions=data$n.tel.sessions,tel.session=data$tel.session,max.n.tel.locs=max.n.tel.locs,
                   tel.ID=data$tel.ID,n.tel.inds=data$n.tel.inds,n.locs.ind=data$n.locs.ind,
                   mark.years=mark.years,sight.years=sight.years,n.mark.years=n.mark.years,
                   n.sight.years=n.sight.years)
@@ -401,7 +401,7 @@ for(i in 1:M){
   loc.nodes <- c()
   tel.idx <- which(data$tel.ID==i)
   if(length(tel.idx)>0){
-    for(g in 1:data$n.tel.years[tel.idx]){
+    for(g in 1:data$n.tel.sessions[tel.idx]){
       loc.nodes <- c(loc.nodes,Rmodel$expandNodeNames(paste0("locs[",tel.idx,",",g,",1:",data$n.locs.ind[tel.idx,g],",1:2]")))
     }
   }

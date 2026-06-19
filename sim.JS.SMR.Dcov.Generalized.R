@@ -249,18 +249,18 @@ sim.JS.SMR.Dcov.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   
   #simulate telemetry locations for all collared years
   if(n.tel.locs>0&sum(mark.states)>0){
-    n.tel.years.vec <- rowSums(tel.z.states==1,na.rm=TRUE)
-    tel.ID <- which(n.tel.years.vec>0)
+    n.tel.sessions.vec <- rowSums(tel.z.states==1,na.rm=TRUE)
+    tel.ID <- which(n.tel.sessions.vec>0)
     n.tel.inds <- length(tel.ID)
     if(n.tel.inds>0){
-      n.tel.years <- n.tel.years.vec[tel.ID] #length n.tel.inds
-      max.n.tel.years <- max(n.tel.years)
-      locs <- array(NA,dim=c(n.tel.inds,max.n.tel.years,n.tel.locs,2))
-      n.locs.ind <- matrix(0,n.tel.inds,max.n.tel.years)
-      tel.year <- matrix(NA,n.tel.inds,max.n.tel.years)
+      n.tel.sessions <- n.tel.sessions.vec[tel.ID] #length n.tel.inds
+      max.n.tel.sessions <- max(n.tel.sessions)
+      locs <- array(NA,dim=c(n.tel.inds,max.n.tel.sessions,n.tel.locs,2))
+      n.locs.ind <- matrix(0,n.tel.inds,max.n.tel.sessions)
+      tel.session <- matrix(NA,n.tel.inds,max.n.tel.sessions)
       for(i in 1:n.tel.inds){
         collared.years <- which(tel.z.states[tel.ID[i],]==1)
-        tel.year[i,1:length(collared.years)] <- collared.years
+        tel.session[i,1:length(collared.years)] <- collared.years
         for(gy in 1:length(collared.years)){
           g <- collared.years[gy]
           locs[i,gy,1:n.tel.locs,1] <- rnorm(n.tel.locs,s[tel.ID[i],1],sigma[g])
@@ -269,17 +269,17 @@ sim.JS.SMR.Dcov.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
         }
       }
     }else{
-      locs <- tel.ID <- tel.year <- NA
+      locs <- tel.ID <- tel.session <- NA
       n.tel.inds <- 0
       n.locs.ind <- NA
-      n.tel.years <- NA
+      n.tel.sessions <- NA
     }
   }else{
     print("no individuals captured, no telemetry")
-    locs <- tel.ID <- tel.year <- NA
+    locs <- tel.ID <- tel.session <- NA
     n.tel.inds <- 0
     n.locs.ind <- NA
-    n.tel.years <- NA
+    n.tel.sessions <- NA
   }
   tel.ID.g <- vector("list",n.primary)
   for(g in 1:n.primary){
@@ -291,18 +291,18 @@ sim.JS.SMR.Dcov.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   
   #simulate telemetry locations
   # if(n.tel.locs>0&sum(y.mark)>0){
-  #   n.tel.years <- rowSums(tel.z.states==1,na.rm=TRUE)
-  #   n.tel.years <- n.tel.years[ID.marked.all]
-  #   n.tel.inds <- sum(n.tel.years>0)
-  #   tel.year <- matrix(NA,n.tel.inds,n.primary)
-  #   max.n.tel.years <- max(n.tel.years)
-  #   locs <- array(NA,dim=c(n.tel.inds,max.n.tel.years,n.tel.locs,2))
+  #   n.tel.sessions <- rowSums(tel.z.states==1,na.rm=TRUE)
+  #   n.tel.sessions <- n.tel.sessions[ID.marked.all]
+  #   n.tel.inds <- sum(n.tel.sessions>0)
+  #   tel.session <- matrix(NA,n.tel.inds,n.primary)
+  #   max.n.tel.sessions <- max(n.tel.sessions)
+  #   locs <- array(NA,dim=c(n.tel.inds,max.n.tel.sessions,n.tel.locs,2))
   #   for(i in 1:n.tel.inds){
-  #     tel.year[i,1:n.tel.years[i]] <- which(tel.z.states[ID.marked.all[i],]==1)
-  #     for(g in 1:n.tel.years[i]){
+  #     tel.session[i,1:n.tel.sessions[i]] <- which(tel.z.states[ID.marked.all[i],]==1)
+  #     for(g in 1:n.tel.sessions[i]){
   #       #if adding movement, reference correct s years
-  #       locs[i,g,,] <- c(rnorm(n.tel.locs,s[ID.marked.all[i],1],sigma[tel.year[i,g]]),
-  #                        rnorm(n.tel.locs,s[ID.marked.all[i],2],sigma[tel.year[i,g]]))
+  #       locs[i,g,,] <- c(rnorm(n.tel.locs,s[ID.marked.all[i],1],sigma[tel.session[i,g]]),
+  #                        rnorm(n.tel.locs,s[ID.marked.all[i],2],sigma[tel.session[i,g]]))
   #     }
   #   }
   #   n.locs.ind <- apply(!is.na(locs[,,,1]),c(1,2),sum)
@@ -311,9 +311,9 @@ sim.JS.SMR.Dcov.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   #   }
   # }else{
   #   print("no individuals captured, no telemetry")
-  #   locs <- tel.year <- NA
+  #   locs <- tel.session <- NA
   #   n.tel.inds <- 0
-  #   n.tel.years <- NA
+  #   n.tel.sessions <- NA
   #   n.locs.ind <- NA
   # }
   
@@ -364,7 +364,7 @@ sim.JS.SMR.Dcov.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   return(list(y.mark=y.mark,y.mID=y.mID,y.mnoID=y.mnoID,y.um=y.um,y.unk=y.unk, #observed data
               n.primary=n.primary,n.marked=n.marked,n.marked.all=n.marked.all,
               ID.cap.all=ID.cap.all,n.cap.all=n.cap.all,mark.deploy=mark.deploy,mark.caps=mark.caps,
-              locs=locs,n.tel.inds=n.tel.inds,n.tel.years=n.tel.years,tel.year=tel.year,
+              locs=locs,n.tel.inds=n.tel.inds,n.tel.sessions=n.tel.sessions,tel.session=tel.session,
               n.locs.ind=n.locs.ind,tel.ID=tel.ID,tel.ID.g=tel.ID.g,
               ID.marked=ID.marked,ID.marked.all=ID.marked.all,
               mark.states=mark.states,tel.z.states=tel.z.states,
