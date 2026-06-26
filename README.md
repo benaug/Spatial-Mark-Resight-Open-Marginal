@@ -39,4 +39,4 @@ With little marking effort mixing is worse. 25K iterations were sufficient and i
 interspersion as you add occasions within years.
 
 6/26/26: Added versions with RSF-based activity center movement between primary sessions. These test scripts are set up with abundant
-marked indviduals with telemetry data, which is likely required for acceptable mixing.
+marked individuals with telemetry data, which is likely required for acceptable mixing.
