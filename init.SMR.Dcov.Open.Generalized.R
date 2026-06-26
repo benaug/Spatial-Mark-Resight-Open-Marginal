@@ -38,7 +38,6 @@ init.SMR.Dcov.Open.Generalized <- function(data,inits=NA,M=NA){
   y.unk <- data$y.unk
   
   #reformat these
-  # tel.inds <- matrix(0,max(n.marked),n.primary)
   ID.marked <- matrix(0,max(n.marked),n.primary)
   X.mark <- array(0,dim=c(n.primary,J.mark.max,2))
   K1D.mark <- matrix(0,n.primary,J.mark.max)
@@ -47,12 +46,15 @@ init.SMR.Dcov.Open.Generalized <- function(data,inits=NA,M=NA){
   for(g in 1:n.primary){
     if(n.marked[g]>0){
       ID.marked[1:n.marked[g],g] <- data$ID.marked[[g]]
-      # tel.inds[1:n.marked[g],g] <- data$tel.inds[[g]]
     }
-    X.mark[g,1:J.mark[g],1:2] <- data$X.mark[[g]]
-    K1D.mark[g,1:J.mark[g]] <- data$K1D.mark[[g]]
-    X.sight[g,1:J.sight[g],1:2] <- data$X.sight[[g]]
-    K1D.sight[g,1:J.sight[g]] <- data$K1D.sight[[g]]
+    if(J.mark[g]>0){
+      X.mark[g,1:J.mark[g],1:2] <- data$X.mark[[g]]
+      K1D.mark[g,1:J.mark[g]] <- data$K1D.mark[[g]]
+    }
+    if(J.sight[g]>0){
+      X.sight[g,1:J.sight[g],1:2] <- data$X.sight[[g]]
+      K1D.sight[g,1:J.sight[g]] <- data$K1D.sight[[g]]
+    }
   }
   
   xlim <- data$xlim
@@ -134,25 +136,27 @@ init.SMR.Dcov.Open.Generalized <- function(data,inits=NA,M=NA){
   y.true <- array(0,dim=c(M,n.primary,J.sight.max))
   y.true[1:n.marked.all,,] <- y.mID
   for(g in 1:n.primary){
-    D <- e2dist(s.init, X.sight[g,1:J.sight[g],])
-    lamd <- lam0[g]*exp(-D*D/(2*sigma[g]*sigma[g]))
-    marked.inds <- which(mark.states[,g]==1) 
-    unmarked.inds <- which(mark.states[,g]==0)
-    for(j in 1:J.sight[g]){
-      #add marked no ID
-      if(n.marked[g]>0){
-        prob <- lamd[marked.inds,j]*(tel.z.states[marked.inds,g]!=0) #exclude known deaths 
+    if(J.sight[g]>0){
+      D <- e2dist(s.init, X.sight[g,1:J.sight[g],])
+      lamd <- lam0[g]*exp(-D*D/(2*sigma[g]*sigma[g]))
+      marked.inds <- which(mark.states[,g]==1) 
+      unmarked.inds <- which(mark.states[,g]==0)
+      for(j in 1:J.sight[g]){
+        #add marked no ID
+        if(n.marked[g]>0){
+          prob <- lamd[marked.inds,j]*(tel.z.states[marked.inds,g]!=0) #exclude known deaths 
+          prob <- prob/sum(prob)
+          y.true[marked.inds,g,j] <- y.true[marked.inds,g,j] + rmultinom(1,y.mnoID[g,j],prob=prob)
+        }
+        #add unmarked
+        prob <- lamd[,j]*(1-mark.states[,g])*(tel.z.states[,g]!=0) #zero out marked guys and dead guys
         prob <- prob/sum(prob)
-        y.true[marked.inds,g,j] <- y.true[marked.inds,g,j] + rmultinom(1,y.mnoID[g,j],prob=prob)
+        y.true[,g,j] <- y.true[,g,j] + rmultinom(1,y.um[g,j],prob=prob)
+        #add unk
+        prob <- lamd[,j]*(tel.z.states[,g]!=0) #exclude known deaths
+        prob <- prob/sum(prob)
+        y.true[,g,j] <- y.true[,g,j] + rmultinom(1,y.unk[g,j],prob=prob)
       }
-      #add unmarked
-      prob <- lamd[,j]*(1-mark.states[,g])*(tel.z.states[,g]!=0) #zero out marked guys and dead guys
-      prob <- prob/sum(prob)
-      y.true[,g,j] <- y.true[,g,j] + rmultinom(1,y.um[g,j],prob=prob)
-      #add unk
-      prob <- lamd[,j]*(tel.z.states[,g]!=0) #exclude known deaths
-      prob <- prob/sum(prob)
-      y.true[,g,j] <- y.true[,g,j] + rmultinom(1,y.unk[g,j],prob=prob)
     }
   }
   #initialize z, start with observed guys
@@ -197,60 +201,64 @@ init.SMR.Dcov.Open.Generalized <- function(data,inits=NA,M=NA){
   
   #check starting logProbs one session at a time
   for(g in 1:n.primary){
-    #marking process
-    D.mark <- e2dist(s.init, X.mark[g,1:J.mark[g],])
-    pd <- p0[g]*exp(-D.mark*D.mark/(2*sigma[g]*sigma[g]))
-    logProb <- array(0,dim=c(M,J.mark[g]))
-    for(i in 1:M){
-      for(j in 1:J.mark[g]){
-        logProb[i,j] <- dbinom(y.mark[i,g,j],size=K1D.mark[g,j],prob=pd[i,j],log=TRUE)
-      }
-    }
-    if(!is.finite(sum(logProb)))stop(paste("Starting observation model likelihood not finite. Marking process, year",g))
-    #sighting process
-    D.sight <- e2dist(s.init, X.sight[g,1:J.sight[g],])
-    lamd <- lam0[g]*exp(-D.sight*D.sight/(2*sigma[g]*sigma[g]))
-    #marked with ID obs
-    if(n.marked[g]>0){
-      marked.inds <- which(mark.states[,g]==1)
-      logProb <- array(0,dim=c(length(marked.inds),J.sight[g]))
-      for(ii in 1:length(marked.inds)){
-        i <- marked.inds[ii]
-        for(j in 1:J.sight[g]){
-          logProb[ii,j] <- dpois(y.mID[i,g,j],lamd[i,j]*K1D.sight[g,j],log=TRUE)
+    if(J.mark[g]>0){
+      #marking process
+      D.mark <- e2dist(s.init, X.mark[g,1:J.mark[g],])
+      pd <- p0[g]*exp(-D.mark*D.mark/(2*sigma[g]*sigma[g]))
+      logProb <- array(0,dim=c(M,J.mark[g]))
+      for(i in 1:M){
+        for(j in 1:J.mark[g]){
+          logProb[i,j] <- dbinom(y.mark[i,g,j],size=K1D.mark[g,j],prob=pd[i,j],log=TRUE)
         }
       }
-      if(!is.finite(sum(logProb)))stop(paste("Starting observation model likelihood not finite. Marked with ID observations, year",g))
+      if(!is.finite(sum(logProb)))stop(paste("Starting observation model likelihood not finite. Marking process, year",g))
     }
-    #marked no ID obs
-    logProb <- rep(0,J.sight[g])
-    marked.inds <- which(mark.states[,g]==1)
-    if(length(marked.inds)>1){
-      lamd.mnoID <- colSums(lamd[marked.inds,1:J.sight[g],drop=FALSE])
-    }else if(length(marked.inds)==1){
-      lamd.mnoID <- lamd[marked.inds,1:J.sight[g]]
-    }else{
-      lamd.mnoID <- rep(0,J.sight[g])
+    #sighting process
+    if(J.sight[g]>0){
+      D.sight <- e2dist(s.init, X.sight[g,1:J.sight[g],])
+      lamd <- lam0[g]*exp(-D.sight*D.sight/(2*sigma[g]*sigma[g]))
+      #marked with ID obs
+      if(n.marked[g]>0){
+        marked.inds <- which(mark.states[,g]==1)
+        logProb <- array(0,dim=c(length(marked.inds),J.sight[g]))
+        for(ii in 1:length(marked.inds)){
+          i <- marked.inds[ii]
+          for(j in 1:J.sight[g]){
+            logProb[ii,j] <- dpois(y.mID[i,g,j],lamd[i,j]*K1D.sight[g,j],log=TRUE)
+          }
+        }
+        if(!is.finite(sum(logProb)))stop(paste("Starting observation model likelihood not finite. Marked with ID observations, year",g))
+      }
+      #marked no ID obs
+      logProb <- rep(0,J.sight[g])
+      marked.inds <- which(mark.states[,g]==1)
+      if(length(marked.inds)>1){
+        lamd.mnoID <- colSums(lamd[marked.inds,1:J.sight[g],drop=FALSE])
+      }else if(length(marked.inds)==1){
+        lamd.mnoID <- lamd[marked.inds,1:J.sight[g]]
+      }else{
+        lamd.mnoID <- rep(0,J.sight[g])
+      }
+      for(j in 1:J.sight[g]){
+        logProb[j] <- dpois(y.mnoID[g,j],lamd.mnoID[j]*K1D.sight[g,j])
+      }
+      if(!is.finite(sum(logProb)))stop(paste("Starting observation model likelihood not finite. Marked with no ID observations, year",g))
+      #um obs
+      logProb <- rep(0,J.sight[g])
+      unmarked.inds <- which(mark.states[,g]==0)
+      lamd.um <- colSums(lamd[unmarked.inds,1:J.sight[g],drop=FALSE])
+      for(j in 1:J.sight[g]){
+        logProb[j] <- dpois(y.um[g,j],lamd.um[j]*K1D.sight[g,j])
+      }
+      if(!is.finite(sum(logProb)))stop(paste("Starting observation model likelihood not finite. Unmarked observations, year",g))
+      #unk obs
+      logProb <- rep(0,J.sight[g])
+      lamd.unk <- colSums(lamd[1:M,1:J.sight[g]])
+      for(j in 1:J.sight[g]){
+        logProb[j] <- dpois(y.unk[g,j],lamd.unk[j]*K1D.sight[g,j])
+      }
+      if(!is.finite(sum(logProb)))stop(paste("Starting observation model likelihood not finite. Unknown marked status observations, year",g))
     }
-    for(j in 1:J.sight[g]){
-      logProb[j] <- dpois(y.mnoID[g,j],lamd.mnoID[j]*K1D.sight[g,j])
-    }
-    if(!is.finite(sum(logProb)))stop(paste("Starting observation model likelihood not finite. Marked with no ID observations, year",g))
-    #um obs
-    logProb <- rep(0,J.sight[g])
-    unmarked.inds <- which(mark.states[,g]==0)
-    lamd.um <- colSums(lamd[unmarked.inds,1:J.sight[g],drop=FALSE])
-    for(j in 1:J.sight[g]){
-      logProb[j] <- dpois(y.um[g,j],lamd.um[j]*K1D.sight[g,j])
-    }
-    if(!is.finite(sum(logProb)))stop(paste("Starting observation model likelihood not finite. Unmarked observations, year",g))
-    #unk obs
-    logProb <- rep(0,J.sight[g])
-    lamd.unk <- colSums(lamd[1:M,1:J.sight[g]])
-    for(j in 1:J.sight[g]){
-      logProb[j] <- dpois(y.unk[g,j],lamd.unk[j]*K1D.sight[g,j])
-    }
-    if(!is.finite(sum(logProb)))stop(paste("Starting observation model likelihood not finite. Unknown marked status observations, year",g))
   }
   dummy.data <- rep(0,M) #dummy data not used, doesn't really matter what the values are
 

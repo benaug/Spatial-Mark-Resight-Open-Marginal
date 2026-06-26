@@ -33,8 +33,7 @@ theta.marked <- c(0.75,0.15,0.1) #P(ID, Marked no ID, unk status). must sum to 1
 theta.unmarked <- 0.75 #prob known marked status. #P(ID, Marked no ID, unk status)=(0,theta.unmarked,1-theta.unmarked)
 
 #make an SCR trapping array. Making the trapping array size vary by session
-#I think the code currently requires marking/sighting traps in all sessions
-#even when not used. Will fix that.
+#For occasions with no marking or sighting, insert a trap matrix with 0 rows, matrix(0,nrow=0,ncol=2)
 X.sight <- vector("list",n.primary)
 X.sight[[1]] <- as.matrix(expand.grid(1:10,1:10))
 X.sight[[2]] <- as.matrix(expand.grid(1:10,1:10))
@@ -45,11 +44,33 @@ X.sight[[6]] <- as.matrix(expand.grid(1:10,1:10))
 
 X.mark <- vector("list",n.primary)
 X.mark[[1]] <- as.matrix(expand.grid(3:8,3:8))
-X.mark[[2]] <- as.matrix(expand.grid(3:8,3:8))
-X.mark[[3]] <- as.matrix(expand.grid(3:8,3:8))
+X.mark[[2]] <- matrix(0,nrow=0,ncol=2)
+X.mark[[3]] <- matrix(0,nrow=0,ncol=2)
 X.mark[[4]] <- as.matrix(expand.grid(3:8,3:8))
-X.mark[[5]] <- as.matrix(expand.grid(3:8,3:8))
-X.mark[[6]] <- as.matrix(expand.grid(3:8,3:8))
+X.mark[[5]] <- matrix(0,nrow=0,ncol=2)
+X.mark[[6]] <- matrix(0,nrow=0,ncol=2)
+
+#Check for consistency between traps and occasions
+for(g in 1:n.primary){
+  if(K.sight[g]==0){ #trap matrix should have 0 rows
+    if(!nrow(X.sight[[g]])==0){
+      stop(paste("X.sight and K.sight inconsistent, session",g))
+    }
+  }else{ #trap matrix should have >0 rows
+    if(nrow(X.sight[[g]])==0){
+      stop(paste("X.sight and K.sight inconsistent, session",g))
+    }
+  }
+  if(K.mark[g]==0){ #trap matrix should have 0 rows
+    if(!nrow(X.mark[[g]])==0){
+      stop(paste("X.mark and K.mark inconsistent, session",g))
+    }
+  }else{ #trap matrix should have >0 rows
+    if(nrow(X.mark[[g]])==0){
+      stop(paste("X.mark and K.mark inconsistent, session",g))
+    }
+  }
+}
 
 #For each primary session, a character vector of length K.mark[g] + K.sight[g] specifying the order of the marking
 #and sighting occasions. Vector elements are either "M" or "S" arranged in the order the marking
@@ -201,21 +222,29 @@ points(data$truth$s,pch=16)
 for(g in 1:n.primary){
   image(data$x.vals,data$y.vals,matrix(data$D.cov*data$InSS,data$n.cells.x,data$n.cells.y),
         main=paste("Year",g),xlab="X",ylab="Y",col=cols1)
-  if(K.sight[g]>0){
+  if(data$K.sight[g]>0){
     points(data$X.sight[[g]],pch=4,lwd=2)
   }
-  if(K.mark[g]>0){
+  if(data$K.mark[g]>0){
     points(data$X.mark[[g]],pch=4,lwd=2,col="darkred")
   }
   points(data$truth$s[data$truth$z[,g]==1,1],data$truth$s[data$truth$z[,g]==1,2],pch=16) #activity centers
   if(data$n.marked[g]>0){
     for(i in 1:data$n.marked[g]){
       id <- data$ID.marked[[g]][i]
-      trapcaps <- which(rowSums(data$y.mID[id,g,,])>0)
-      traps <-  data$X.sight[[g]][1:data$J.sight[g],][trapcaps,]
-      trapcaps2 <- which(data$y.mark[id,g,]>0)
-      traps2 <-  data$X.mark[[g]][1:data$J.mark[g],][trapcaps2,]
-      traps <- rbind(traps,traps2)
+      traps <- matrix(numeric(0),nrow=0,ncol=2)
+      if(data$J.sight[g]>0){
+        trapcaps <- which(rowSums(data$y.mID[id,g,,])>0)
+        if(length(trapcaps)>0){
+          traps <- rbind(traps,data$X.sight[[g]][1:data$J.sight[g],][trapcaps,])
+        }
+      }
+      if(data$J.mark[g]>0){
+        trapcaps2 <- which(data$y.mark[id,g,]>0)
+        if(length(trapcaps2)>0){
+          traps <- rbind(traps,data$X.mark[[g]][1:data$J.mark[g],][trapcaps2,])
+        }
+      }
       s <- data$s[id,]
       points(s[1],s[2],col="goldenrod",pch=16)
       if(nrow(traps)>0){
@@ -310,11 +339,18 @@ for(g in 1:n.primary){
   points(data$X.mark[[g]],pch=4,lwd=2,col="darkred")
   points(nimbuild$s[nimbuild$z[,g]==1,1],nimbuild$s[nimbuild$z[,g]==1,2],pch=16) #initialized activity centers
   for(i in 1:n.marked[g]){
-    trapcaps <- which(rowSums(nimbuild$y.mID[nimbuild$ID.marked[i,g],g,,])>0)
-    traps <-  nimbuild$X.sight[g,1:J.sight[g],][trapcaps,]
-    trapcaps2 <- which(nimbuild$y.mark[nimbuild$ID.marked[i,g],g,]>0)
-    traps2 <-  nimbuild$X.mark[g,1:J.mark[g],][trapcaps2,]
-    traps <- rbind(traps,traps2)
+    id <- nimbuild$ID.marked[i,g]
+    traps <- matrix(numeric(0),nrow=0,ncol=2)
+    if(J.sight[g]>0){
+      trapcaps <- which(rowSums(nimbuild$y.mID[nimbuild$ID.marked[i,g],g,,])>0)
+      if(length(trapcaps)>0){
+        traps <- rbind(traps,nimbuild$X.sight[g,trapcaps,1:2])
+      }
+    }
+    trapcaps2 <- which(nimbuild$y.mark[id,g,1:J.mark[g]]>0)
+    if(length(trapcaps2)>0){
+      traps <- rbind(traps,nimbuild$X.mark[g,trapcaps2,1:2])
+    }
     s <- nimbuild$s[nimbuild$ID.marked[i,g],]
     points(s[1],s[2],col="goldenrod",pch=16)
     if(nrow(traps)>0){

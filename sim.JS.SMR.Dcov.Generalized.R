@@ -134,11 +134,13 @@ sim.JS.SMR.Dcov.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   #Capture and mark individuals
   y.mark <- pd <- array(0,dim=c(N.super,n.primary,J.mark.max))
   for(g in 1:n.primary){
-    D.mark <- e2dist(s,X.mark[[g]])
-    pd[,g,1:J.mark[g]] <- p0[g]*exp(-D.mark*D.mark/(2*sigma[g]*sigma[g]))
-    for(i in 1:N.super){
-      if(z[i,g]==1){
-        y.mark[i,g,1:J.mark[g]] <- rbinom(J.mark[g],size=K1D.mark[[g]],prob=pd[i,g,1:J.mark[g]])
+    if(J.mark[g]>0){
+      D.mark <- e2dist(s,X.mark[[g]])
+      pd[,g,1:J.mark[g]] <- p0[g]*exp(-D.mark*D.mark/(2*sigma[g]*sigma[g]))
+      for(i in 1:N.super){
+        if(z[i,g]==1){
+          y.mark[i,g,1:J.mark[g]] <- rbinom(J.mark[g],size=K1D.mark[[g]],prob=pd[i,g,1:J.mark[g]])
+        }
       }
     }
   }
@@ -146,11 +148,13 @@ sim.JS.SMR.Dcov.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   #resight individuals
   lamd <- y <- array(0,dim=c(N.super,n.primary,J.sight.max))
   for(g in 1:n.primary){
-    D <- e2dist(s,X.sight[[g]])
-    lamd[,g,1:J.sight[g]] <- lam0[g]*exp(-D*D/(2*sigma[g]*sigma[g]))
-    for(i in 1:N.super){
-      if(z[i,g]==1){
+    if(J.sight[g]>0){
+      D <- e2dist(s,X.sight[[g]])
+      lamd[,g,1:J.sight[g]] <- lam0[g]*exp(-D*D/(2*sigma[g]*sigma[g]))
+      for(i in 1:N.super){
+        if(z[i,g]==1){
           y[i,g,1:J.sight[g]] <- rpois(J.sight[g],K1D.sight[[g]]*lamd[i,g,1:J.sight[g]])
+        }
       }
     }
   }

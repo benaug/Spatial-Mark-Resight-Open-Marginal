@@ -161,7 +161,7 @@ sim.JS.SMR.Dcov.Generalized.Interspersed <- function(D.beta0=NA,D.beta1=NA,D.cov
   pd <- array(0,dim=c(N.super,n.primary,J.mark.max))
   y.mark <- array(0,dim=c(N.super,n.primary,J.mark.max,K.mark.max))
   for(g in 1:n.primary){
-    if(K.mark[g]>0){
+    if(J.mark[g]>0){
       D.mark <- e2dist(s,X.mark[[g]])
       pd[,g,1:J.mark[g]] <- p0[g]*exp(-D.mark*D.mark/(2*sigma[g]*sigma[g]))
       for(i in 1:N.super){
@@ -180,7 +180,7 @@ sim.JS.SMR.Dcov.Generalized.Interspersed <- function(D.beta0=NA,D.beta1=NA,D.cov
   lamd <- array(0,dim=c(N.super,n.primary,J.sight.max))
   y <- array(0,dim=c(N.super,n.primary,J.sight.max,K.sight.max))
   for(g in 1:n.primary){
-    if(K.sight[g]>0){
+    if(J.sight[g]>0){
       D <- e2dist(s,X.sight[[g]])
       lamd[,g,1:J.sight[g]] <- lam0[g]*exp(-D*D/(2*sigma[g]*sigma[g]))
       for(i in 1:N.super){

@@ -39,7 +39,6 @@ init.SMR.Dcov.Open.Generalized.Interspersed <- function(data,inits=NA,M=NA){
   y.unk <- data$y.unk
   
   #reformat these
-  # tel.inds <- matrix(0,max(n.marked),n.primary)
   ID.marked <- matrix(0,max(n.marked),n.primary)
   X.mark <- array(0,dim=c(n.primary,J.mark.max,2))
   K1D.mark <- matrix(0,n.primary,J.mark.max)
@@ -49,10 +48,12 @@ init.SMR.Dcov.Open.Generalized.Interspersed <- function(data,inits=NA,M=NA){
     if(n.marked[g]>0){
       ID.marked[1:n.marked[g],g] <- data$ID.marked[[g]]
     }
-    X.mark[g,1:J.mark[g],1:2] <- data$X.mark[[g]]
-    K1D.mark[g,1:J.mark[g]] <- data$K1D.mark[[g]]
-    X.sight[g,1:J.sight[g],1:2] <- data$X.sight[[g]]
-    if(data$K.sight[g]>0){
+    if(J.mark[g]>0){
+      X.mark[g,1:J.mark[g],1:2] <- data$X.mark[[g]]
+      K1D.mark[g,1:J.mark[g]] <- data$K1D.mark[[g]]
+    }
+    if(J.sight[g]>0){
+      X.sight[g,1:J.sight[g],1:2] <- data$X.sight[[g]]
       K2D.sight[g,1:J.sight[g],1:K.sight[g]] <- data$K2D.sight[[g]]
     }
   }
@@ -138,30 +139,32 @@ init.SMR.Dcov.Open.Generalized.Interspersed <- function(data,inits=NA,M=NA){
   y.true[1:n.marked.all,,,] <- y.mID
   
   for(g in 1:n.primary){
-    D <- e2dist(s.init,X.sight[g,1:J.sight[g],])
-    lamd <- lam0[g]*exp(-D*D/(2*sigma[g]*sigma[g]))
-    for(j in 1:J.sight[g]){
-      if(K.sight[g]>0){
-        for(k in 1:K.sight[g]){
-          marked.inds <- which(mark.states[,g,k]==1)
-          unmarked.inds <- which(mark.states[,g,k]==0)
-          if(length(marked.inds)>0){
-            prob <- lamd[marked.inds,j]*(tel.z.states[marked.inds,g]!=0)
+    if(J.sight[g]>0){
+      D <- e2dist(s.init,X.sight[g,1:J.sight[g],])
+      lamd <- lam0[g]*exp(-D*D/(2*sigma[g]*sigma[g]))
+      for(j in 1:J.sight[g]){
+        if(J.sight[g]>0){
+          for(k in 1:K.sight[g]){
+            marked.inds <- which(mark.states[,g,k]==1)
+            unmarked.inds <- which(mark.states[,g,k]==0)
+            if(length(marked.inds)>0){
+              prob <- lamd[marked.inds,j]*(tel.z.states[marked.inds,g]!=0)
+              if(sum(prob)>0){
+                prob <- prob/sum(prob)
+                y.true[marked.inds,g,j,k] <- y.true[marked.inds,g,j,k]+
+                  rmultinom(1,y.mnoID[g,j,k],prob=prob)
+              }
+            }
+            prob <- lamd[,j]*(1-mark.states[,g,k])*(tel.z.states[,g]!=0)
             if(sum(prob)>0){
               prob <- prob/sum(prob)
-              y.true[marked.inds,g,j,k] <- y.true[marked.inds,g,j,k]+
-                rmultinom(1,y.mnoID[g,j,k],prob=prob)
+              y.true[,g,j,k] <- y.true[,g,j,k]+rmultinom(1,y.um[g,j,k],prob=prob)
             }
-          }
-          prob <- lamd[,j]*(1-mark.states[,g,k])*(tel.z.states[,g]!=0)
-          if(sum(prob)>0){
-            prob <- prob/sum(prob)
-            y.true[,g,j,k] <- y.true[,g,j,k]+rmultinom(1,y.um[g,j,k],prob=prob)
-          }
-          prob <- lamd[,j]*(tel.z.states[,g]!=0)
-          if(sum(prob)>0){
-            prob <- prob/sum(prob)
-            y.true[,g,j,k] <- y.true[,g,j,k]+rmultinom(1,y.unk[g,j,k],prob=prob)
+            prob <- lamd[,j]*(tel.z.states[,g]!=0)
+            if(sum(prob)>0){
+              prob <- prob/sum(prob)
+              y.true[,g,j,k] <- y.true[,g,j,k]+rmultinom(1,y.unk[g,j,k],prob=prob)
+            }
           }
         }
       }
@@ -209,17 +212,19 @@ init.SMR.Dcov.Open.Generalized.Interspersed <- function(data,inits=NA,M=NA){
   #check starting logProbs one session at a time
   for(g in 1:n.primary){
     #marking process
-    D.mark <- e2dist(s.init, X.mark[g,1:J.mark[g],])
-    pd <- p0[g]*exp(-D.mark*D.mark/(2*sigma[g]*sigma[g]))
-    logProb <- array(0,dim=c(M,J.mark[g]))
-    for(i in 1:M){
-      for(j in 1:J.mark[g]){
-        logProb[i,j] <- dbinom(y.mark[i,g,j],size=K1D.mark[g,j],prob=pd[i,j],log=TRUE)
+    if(J.mark[g]>0){
+      D.mark <- e2dist(s.init, X.mark[g,1:J.mark[g],])
+      pd <- p0[g]*exp(-D.mark*D.mark/(2*sigma[g]*sigma[g]))
+      logProb <- array(0,dim=c(M,J.mark[g]))
+      for(i in 1:M){
+        for(j in 1:J.mark[g]){
+          logProb[i,j] <- dbinom(y.mark[i,g,j],size=K1D.mark[g,j],prob=pd[i,j],log=TRUE)
+        }
       }
+      if(!is.finite(sum(logProb)))stop(paste("Starting observation model likelihood not finite. Marking process, year",g))
     }
-    if(!is.finite(sum(logProb)))stop(paste("Starting observation model likelihood not finite. Marking process, year",g))
     #sighting process
-    if(K.sight[g]>0){
+    if(J.sight[g]>0){
       D.sight <- e2dist(s.init, X.sight[g,1:J.sight[g],])
       lamd <- lam0[g]*exp(-D.sight*D.sight/(2*sigma[g]*sigma[g]))
       #marked with ID obs
@@ -243,11 +248,15 @@ init.SMR.Dcov.Open.Generalized.Interspersed <- function(data,inits=NA,M=NA){
       for(k in 1:K.sight[g]){
         marked.inds.gk <- which(mark.states[,g,k]==1)
         unmarked.inds.gk <- which(mark.states[,g,k]==0)
-        
-        lamd.mnoID <- if(length(marked.inds.gk)>0) colSums(lamd[marked.inds.gk,1:J.sight[g],drop=FALSE]) else rep(0,J.sight[g])
-        lamd.um <- if(length(unmarked.inds.gk)>0) colSums(lamd[unmarked.inds.gk,1:J.sight[g],drop=FALSE]) else rep(0,J.sight[g])
+        lamd.mnoID <- rep(0,J.sight[g])
+        if(length(marked.inds.gk)>0){
+          lamd.mnoID <- colSums(lamd[marked.inds.gk,1:J.sight[g],drop=FALSE])
+        }
+        lamd.um <- rep(0,J.sight[g])
+        if(length(unmarked.inds.gk)>0){
+          lamd.um <- colSums(lamd[unmarked.inds.gk,1:J.sight[g],drop=FALSE])
+        }
         lamd.unk <- colSums(lamd[1:M,1:J.sight[g],drop=FALSE])
-        
         for(j in 1:J.sight[g]){
           if(!is.finite(dpois(y.mnoID[g,j,k],lamd.mnoID[j]*K2D.sight[g,j,k],log=TRUE))){
             stop(paste("Starting observation model likelihood not finite. Marked with no ID observations, year",g))
