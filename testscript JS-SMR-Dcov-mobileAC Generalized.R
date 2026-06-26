@@ -410,9 +410,11 @@ for(g in 1:n.primary){
           traps <- rbind(traps,nimbuild$X.sight[g,trapcaps,1:2])
         }
       }
-      trapcaps2 <- which(nimbuild$y.mark[id,g,1:J.mark[g]]>0)
-      if(length(trapcaps2)>0){
-        traps <- rbind(traps,nimbuild$X.mark[g,trapcaps2,1:2])
+      if(J.mark[g]>0){
+        trapcaps2 <- which(nimbuild$y.mark[id,g,1:J.mark[g]]>0)
+        if(length(trapcaps2)>0){
+          traps <- rbind(traps,nimbuild$X.mark[g,trapcaps2,1:2])
+        }
       }
       s <- nimbuild$s[id,g,1:2]
       points(s[1],s[2],col="goldenrod",pch=16)
