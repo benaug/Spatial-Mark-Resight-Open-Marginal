@@ -127,8 +127,8 @@ sim.JS.SMR.Dcov.mobileAC.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,
   #distribute activity centers uniformly inside cells
   s <- array(NA,dim=c(N.super,n.primary,2))
   for(i in 1:N.super){
-    s.xlim <- dSS[s.cell[i],1] + c(-res,res)/2
-    s.ylim <- dSS[s.cell[i],2] + c(-res,res)/2
+    s.xlim <- dSS[s.cell[i,1],1] + c(-res,res)/2
+    s.ylim <- dSS[s.cell[i,1],2] + c(-res,res)/2
     s[i,1,1] <- runif(1,s.xlim[1],s.xlim[2])
     s[i,1,2] <- runif(1,s.ylim[1],s.ylim[2])
   }
