@@ -40,3 +40,15 @@ interspersion as you add occasions within years.
 
 6/26/26: Added versions with RSF-based activity center movement between primary sessions. These test scripts are set up with abundant
 marked individuals with telemetry data, which is likely required for acceptable mixing.
+
+7/15/26: Added fixed-activity-center model versions with a gamma random effect at the primary-session-by-detector level in 
+the sighting process. This allows extra-Poisson variation among detectors within each primary session. The random effects are 
+analytically integrated out rather than explicitly sampled. The implementation retains the component Poisson likelihoods and appends a likelihood-ratio correction that replaces the Poisson distribution of the detector-session total with its corresponding negative-binomial distribution.
+
+So far, versions are available both with and without an explicit occasion dimension with fixed activity centers and without an explicit
+occasion dimension with mobile activity centers. In the occasion-level version, the current
+implementation assumes that the same detector effect is shared across all occasions within a primary session. An alternative
+formulation could assign independent random effects at the primary session by detector by occasion level.
+
+The marginalized model runs somewhat more slowly than the base Poisson model, but should generally be more
+computationally efficient than explicitly sampling every detector-level random effect.

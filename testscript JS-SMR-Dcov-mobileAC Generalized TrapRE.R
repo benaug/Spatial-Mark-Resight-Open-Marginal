@@ -1,10 +1,10 @@
 library(nimble)
 library(coda)
-source("sim.JS.SMR.Dcov.mobileAC.Generalized.R")
-source("init.SMR.Dcov.mobileAC.Open.Generalized.R")
-source("Nimble Model JS-SMR-Dcov-mobileAC Generalized.R")
-source("Nimble Functions JS-SMR-Dcov-mobileAC Generalized.R") #contains custom distributions and updates
-source("sSampler Dcov mobileAC Open Marginal Generalized.R")
+source("sim.JS.SMR.Dcov.mobileAC.Generalized.TrapRE.R")
+source("init.SMR.Dcov.mobileAC.Open.Generalized.TrapRE.R")
+source("Nimble Model JS-SMR-Dcov-mobileAC Generalized TrapRE.R")
+source("Nimble Functions JS-SMR-Dcov-mobileAC Generalized TrapRE.R") #contains custom distributions and updates
+source("sSampler Dcov mobileAC Open Marginal Generalized TrapRE.R")
 source("mask.check.R")
 #must run this line 
 nimbleOptions(determinePredictiveNodesInModel = FALSE)
@@ -18,6 +18,9 @@ phi <- rep(0.8,n.primary-1) #yearly per-capita recruitment
 gamma <- rep(0.2,n.primary-1) #yearly per-capita recruitment
 p0 <- rep(0.25,n.primary) #marking process p0
 lam0 <- rep(0.25,n.primary) #sighting process lam0
+theta.d <- rep(5,n.primary) #trap-level RE parameter. multiplicative effect. small effects may not be identifiable
+par(mfrow=c(1,1),ask=FALSE)
+hist(rgamma(1000,theta.d,theta.d),breaks=100) #visualize distribution of trap-level REs
 sigma <- rep(0.5,n.primary) #yearly detection function scale
 sigma.move <- 2 # yearly relocation scale
 rsf.beta <- 0.5 #yearly relocation RSF coefficient
@@ -25,7 +28,7 @@ p.mark <- rep(0.75,n.primary) #yearly probability of marking given captured in m
 #Number of occasions per year per method
 #to skip sampling by a method in a year, set its K=0
 K.mark <- c(5,5,5,5,5,5) #yearly marking occasions
-K.sight <- c(5,5,5,5,5,5) #yearly resighting occasions
+K.sight <- c(15,15,15,15,15,15) #yearly resighting occasions
 if(length(K.mark)!=length(K.sight))stop("K.mark and K.sight must be same length")
 if(length(K.mark)!=n.primary)stop("K.mark and K.sight must be of length n.primary")
 
@@ -168,14 +171,15 @@ mark.protocol <- 2
 
 # simulate some data
 set.seed(390297) #change seed for new data set
-data <- sim.JS.SMR.Dcov.mobileAC.Generalized(D.beta0=D.beta0,D.beta1=D.beta1,D.cov=D.cov,
-                                             InSS=InSS,phi=phi,gamma=gamma,n.primary=n.primary,
-                                             theta.marked=theta.marked,theta.unmarked=theta.unmarked,
-                                             p0=p0,lam0=lam0,sigma=sigma,sigma.move=sigma.move,rsf.beta=rsf.beta,
-                                             K.mark=K.mark,K.sight=K.sight,
-                                             X.mark=X.mark,X.sight=X.sight,xlim=xlim,ylim=ylim,res=res,
-                                             mark.year.pars=mark.year.pars,mark.protocol=mark.protocol,
-                                             p.mark=p.mark,n.tel.locs=n.tel.locs)
+data <- sim.JS.SMR.Dcov.mobileAC.Generalized.TrapRE(D.beta0=D.beta0,D.beta1=D.beta1,D.cov=D.cov,
+            InSS=InSS,phi=phi,gamma=gamma,n.primary=n.primary,
+            theta.marked=theta.marked,theta.unmarked=theta.unmarked,
+            p0=p0,lam0=lam0,sigma=sigma,theta.d=theta.d,
+            sigma.move=sigma.move,rsf.beta=rsf.beta,
+            K.mark=K.mark,K.sight=K.sight,
+            X.mark=X.mark,X.sight=X.sight,xlim=xlim,ylim=ylim,res=res,
+            mark.year.pars=mark.year.pars,mark.protocol=mark.protocol,
+            p.mark=p.mark,n.tel.locs=n.tel.locs)
 
 #what is observed data? Note data objects have all n.primarys with all 0 data if no effort for a method
 #Could be structured without years with no effort, but that would require more work changing custom
@@ -260,6 +264,9 @@ data <- sim.JS.SMR.Dcov.mobileAC.Generalized(D.beta0=D.beta0,D.beta1=D.beta1,D.c
 #       main="Use Distribution")
 # points(data$truth$s[i,g,1],data$truth$s[i,g,2],pch=16,col="darkred")
 # par(mfrow=c(1,1))
+
+#session by trap level counts. need obvious overdispersion and larger counts for identifiability of trap RE parameter(s)
+hist(apply(data$truth$y,c(2,3),sum))
 
 data$N #yearly abundance
 colSums(apply(data$y.mark>0,c(1,2),sum)>0) #total marking process captures per year
@@ -373,10 +380,10 @@ if(length(idx)>0){
 #Use reasonable inits for lam0 and sigma since we check to make sure initial observation
 #model likelihood is finite
 inits <- list(p0=rep(0.1,n.primary),lam0=rep(0.25,n.primary),#initializing with 1 parameter per session, just set all to same value
-              sigma=rep(0.5,n.primary),
+              sigma=rep(0.5,n.primary),theta.d=rep(10,n.primary),
               sigma.move=2,D.beta1=0.5,rsf.beta=0.5) #single sigma.move, D.beta1, rsf.beta
 #This function structures the simulated data to fit the model in Nimble (some more restructing below)
-nimbuild <- init.SMR.Dcov.mobileAC.Open.Generalized(data,inits,M=M)
+nimbuild <- init.SMR.Dcov.mobileAC.Open.Generalized.TrapRE(data,inits,M=M)
 
 #make sure that if we know an individual is marked in year g, it is known to be alive in year g
 #otherwise, how would you know it still has a mark?
@@ -451,6 +458,7 @@ Niminits <- list(N=nimbuild$N,N.survive=nimbuild$N.survive,N.recruit=nimbuild$N.
                  z=nimbuild$z,z.start=nimbuild$z.start,z.stop=nimbuild$z.stop,
                  s=nimbuild$s,phi.fixed=0.5,D0=nimbuild$N[1]/(sum(InSS)*res^2),
                  p0=inits$p0[mark.years],lam0=inits$lam0[sight.years],sigma.fixed=inits$sigma[1],
+                 theta.d.fixed=inits$theta.d[sight.years[1]],
                  sigma.move=inits$sigma.move,rsf.beta=inits$rsf.beta,D.beta1=inits$D.beta1)
 
 #data for Nimble
@@ -459,13 +467,15 @@ Nimdata <- list(y.mark=nimbuild$y.mark, #marking process
                 y.mnoID=nimbuild$y.mnoID, #marked without ID
                 y.um=nimbuild$y.um, #unmarked
                 y.unk=nimbuild$y.unk, #unk marked status
+                y.trap.total=nimbuild$y.trap.total, #session by trap total sightings
+                trap.RE.dummy=nimbuild$trap.RE.dummy, #dummy data for trap REs
                 mark.states=nimbuild$mark.states, #mark state history (who is marked in each year)
                 tel.z.states=nimbuild$tel.z.states, #telemetry z state observations
                 cells=cells,InSS=InSS,dSS=dSS,
                 X.mark=nimbuild$X.mark,X.sight=nimbuild$X.sight,locs=data$locs)
 
 # set parameters to monitor
-parameters <- c('N','gamma.fixed','N.recruit','N.survive','N.super','lambda.y1',
+parameters <- c('N','gamma.fixed','N.recruit','N.survive','N.super','lambda.y1','theta.d.fixed',
                 'phi.fixed','p0','lam0','sigma.fixed','theta.marked','theta.unmarked',
                 'D0','D.beta1','sigma.move','rsf.beta')
 nt <- 1 #thinning rate
@@ -473,7 +483,7 @@ nt <- 1 #thinning rate
 # Build the model, configure the mcmc, and compile
 start.time <- Sys.time()
 Rmodel <- nimbleModel(code=NimModel, constants=constants, data=Nimdata,check=FALSE,inits=Niminits)
-config.nodes <- c('phi.fixed','gamma.fixed','p0','lam0','sigma.fixed',
+config.nodes <- c('phi.fixed','gamma.fixed','p0','lam0','sigma.fixed','theta.d.fixed',
                   'theta.marked','theta.unmarked[2:3]','sigma.move','rsf.beta')
 #use this above if theta.unmarked is year specific (no change for theta.marked): paste('theta.unmarked[1:',n.primary,',2:3',']')
 conf <- configureMCMC(Rmodel,monitors=parameters,thin=nt,nodes=config.nodes)
@@ -488,6 +498,7 @@ y.um.nodes <- Rmodel$expandNodeNames(paste("y.um[1:",n.primary,",1:",max(J.sight
 y.unk.nodes <- Rmodel$expandNodeNames(paste("y.unk[1:",n.primary,",1:",max(J.sight),"]"))
 lam.um.nodes <- Rmodel$expandNodeNames(paste("lam.um[1:",n.primary,",1:",max(J.sight),"]"))
 lam.unk.nodes <- Rmodel$expandNodeNames(paste("lam.unk[1:",n.primary,",1:",max(J.sight),"]"))
+trap.RE.nodes <- Rmodel$expandNodeNames(paste("trap.RE.dummy[1:",n.primary,"]",sep=""))
 N.nodes <- Rmodel$expandNodeNames(paste0("N"))
 N.survive.nodes <- Rmodel$expandNodeNames(paste0("N.survive[1:",n.primary-1,"]"))
 N.recruit.nodes <- Rmodel$expandNodeNames(paste0("N.recruit[1:",n.primary-1,"]"))
@@ -495,7 +506,8 @@ ER.nodes <- Rmodel$expandNodeNames(paste0("ER[1:",n.primary-1,"]"))
 s.nodes <- Rmodel$expandNodeNames(paste0("s"))
 z.nodes <- Rmodel$expandNodeNames(paste0("z[1:",M,",1]"))
 tel.z.states.nodes <- Rmodel$expandNodeNames(paste0("tel.z.states[1:",M,",1]"))
-calcNodes <- c(s.nodes,N.nodes,N.recruit.nodes,y.mark.nodes,y.um.nodes,y.unk.nodes,s.nodes,z.nodes,tel.z.states.nodes) #the ones that need likelihoods updated in mvSaved
+calcNodes <- c(s.nodes,N.nodes,N.recruit.nodes,y.mark.nodes,y.um.nodes,y.unk.nodes,
+               trap.RE.nodes,s.nodes,z.nodes,tel.z.states.nodes) #the ones that need likelihoods updated in mvSaved
 #need to convert cells to double to use inside custom sampler
 cells.double <- matrix(as.double(cells),n.cells.x,n.cells.y)
 conf$addSampler(target = c("z"),
@@ -513,6 +525,7 @@ conf$addSampler(target = c("z"),
                                                  y.um.nodes=y.um.nodes,y.unk.nodes=y.unk.nodes,
                                                  lam.nodes=lam.nodes,tel.z.states.nodes=tel.z.states.nodes,
                                                  lam.um.nodes=lam.um.nodes,lam.unk.nodes=lam.unk.nodes,
+                                                 trap.RE.nodes=trap.RE.nodes,
                                                  N.nodes=N.nodes,z.nodes=z.nodes,ER.nodes=ER.nodes,
                                                  N.survive.nodes=N.survive.nodes,
                                                  N.recruit.nodes=N.recruit.nodes,s.nodes=s.nodes,
@@ -564,6 +577,7 @@ for(i in 1:M){
       y.unk.nodes <- Rmodel$expandNodeNames(paste0("y.unk[",g,",1:",J.sight[g],"]"))
       lam.um.nodes <- Rmodel$expandNodeNames(paste0("lam.um[",g,",1:",J.sight[g],"]"))
       lam.unk.nodes <- Rmodel$expandNodeNames(paste0("lam.unk[",g,",1:",J.sight[g],"]"))
+      trap.RE.nodes <- Rmodel$expandNodeNames(paste0("trap.RE.dummy[",g,"]"))
       if(i<=nimbuild$n.marked.all){
         y.mID.nodes <- Rmodel$expandNodeNames(paste0("y.mID[",i,",",g,",1:",J.sight[g],"]"))
         y.mnoID.nodes <- Rmodel$expandNodeNames(paste0("y.mnoID[",g,",1:",J.sight[g],"]"))
@@ -582,6 +596,7 @@ for(i in 1:M){
       lam.mnoID.nodes <- character(0)
       lam.um.nodes <- character(0)
       lam.unk.nodes <- character(0)
+      trap.RE.nodes <- character(0)
     }
     conf$addSampler(target=s.target,
                     type='sSampler1',
@@ -590,7 +605,7 @@ for(i in 1:M){
                                  s.nodes=s.nodes,pd.nodes=pd.nodes,
                                  lam.nodes=lam.nodes,y.mark.nodes=y.mark.nodes,
                                  y.mID.nodes=y.mID.nodes,y.mnoID.nodes=y.mnoID.nodes,
-                                 y.um.nodes=y.um.nodes,y.unk.nodes=y.unk.nodes,
+                                 y.um.nodes=y.um.nodes,y.unk.nodes=y.unk.nodes,trap.RE.nodes=trap.RE.nodes,
                                  lam.mnoID.nodes=lam.mnoID.nodes,lam.um.nodes=lam.um.nodes,
                                  lam.unk.nodes=lam.unk.nodes,calcNodes=calcNodes,scale=1),
                     silent=TRUE)
@@ -646,6 +661,7 @@ for(i in 1:M){
 #       y.unk.nodes <- Rmodel$expandNodeNames(paste0("y.unk[",g,",1:",J.sight[g],"]"))
 #       lam.um.nodes <- Rmodel$expandNodeNames(paste0("lam.um[",g,",1:",J.sight[g],"]"))
 #       lam.unk.nodes <- Rmodel$expandNodeNames(paste0("lam.unk[",g,",1:",J.sight[g],"]"))
+#       trap.RE.nodes <- Rmodel$expandNodeNames(paste0("trap.RE.dummy[",g,"]"))
 #       if(i<=nimbuild$n.marked.all){
 #         y.mID.nodes <- Rmodel$expandNodeNames(paste0("y.mID[",i,",",g,",1:",J.sight[g],"]"))
 #         y.mnoID.nodes <- Rmodel$expandNodeNames(paste0("y.mnoID[",g,",1:",J.sight[g],"]"))
@@ -664,6 +680,7 @@ for(i in 1:M){
 #       lam.mnoID.nodes <- character(0)
 #       lam.um.nodes <- character(0)
 #       lam.unk.nodes <- character(0)
+#       trap.RE.nodes <- character(0)
 #     }
 #     conf$addSampler(target=s.target,
 #                     type='sSampler3',
@@ -673,7 +690,7 @@ for(i in 1:M){
 #                                  s.nodes=s.nodes,pd.nodes=pd.nodes,lam.nodes=lam.nodes,y.mark.nodes=y.mark.nodes,
 #                                  y.mID.nodes=y.mID.nodes,y.mnoID.nodes=y.mnoID.nodes,y.um.nodes=y.um.nodes,
 #                                  y.unk.nodes=y.unk.nodes,lam.mnoID.nodes=lam.mnoID.nodes,lam.um.nodes=lam.um.nodes,
-#                                  lam.unk.nodes=lam.unk.nodes,
+#                                  lam.unk.nodes=lam.unk.nodes,trap.RE.nodes=trap.RE.nodes,
 #                                  calcNodes=calcNodes),
 #                     silent=TRUE)
 #   }
@@ -697,13 +714,13 @@ Cmcmc <- compileNimble(Rmcmc,project=Rmodel)
 
 # Run the model.
 start.time2 <- Sys.time()
-Cmcmc$run(2500,reset=FALSE) #can extend run by rerunning this line
+Cmcmc$run(5000,reset=FALSE) #can extend run by rerunning this line
 end.time <- Sys.time()
 time1 <- end.time-start.time  # total time for compilation, replacing samplers, and fitting
 time2 <- end.time-start.time2 # post-compilation run time
 
 mvSamples <- as.matrix(Cmcmc$mvSamples)
-burnin <- 500
+burnin <- 50
 plot(mcmc(mvSamples[-c(1:burnin),]))
 
 #reminder what some targets are
