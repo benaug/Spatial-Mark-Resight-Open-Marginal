@@ -18,8 +18,8 @@ init.SMR.Dcov.Open.Generalized.TrapRE <- function(data,inits=NA,M=NA){
   tel.z.states[1:n.marked.all,] <- data$tel.z.states
   tel.z.states[is.na(tel.z.states)] <- 2  #use 2 to code NA for nimble function
   
-  J.mark <- unlist(lapply(data$X.mark,nrow)) #traps per year
-  J.sight <- unlist(lapply(data$X.sight,nrow)) #traps per year
+  J.mark <- unlist(lapply(data$X.mark,nrow)) #traps per primary occasion
+  J.sight <- unlist(lapply(data$X.sight,nrow)) #traps per primary occasion
   J.mark.max <- max(J.mark)
   J.sight.max <- max(J.sight)
   K.mark <- data$K.mark
@@ -88,7 +88,7 @@ init.SMR.Dcov.Open.Generalized.TrapRE <- function(data,inits=NA,M=NA){
   idx <- which(has.mark|has.mID|has.tel)
   
   for(i in idx){
-    trps <- matrix(0,nrow=0,ncol=2) #get locations of traps of capture across years for ind i
+    trps <- matrix(0,nrow=0,ncol=2) #get locations of traps of capture across primary occasions for ind i
     for(g in 1:n.primary){
       if(sum(y.mark[i,g,])>0){
         trps.g <- matrix(X.mark[g,which(y.mark[i,g,]>0),,drop=FALSE],ncol=2,byrow=FALSE)
@@ -102,7 +102,7 @@ init.SMR.Dcov.Open.Generalized.TrapRE <- function(data,inits=NA,M=NA){
       }
     }
     if(i%in%data$tel.ID){
-      these.locs <- matrix(0,nrow=0,ncol=2) #get telemetry locs across years for tel.ID i
+      these.locs <- matrix(0,nrow=0,ncol=2) #get telemetry locs across primary occasions for tel.ID i
       this.tel.ind <- which(data$tel.ID==i)
       for(g in 1:data$n.tel.sessions[this.tel.ind]){
         if(data$n.locs.ind[this.tel.ind,g]>0){
@@ -224,7 +224,7 @@ init.SMR.Dcov.Open.Generalized.TrapRE <- function(data,inits=NA,M=NA){
           logProb[i,j] <- dbinom(y.mark[i,g,j],size=K1D.mark[g,j],prob=pd[i,j],log=TRUE)
         }
       }
-      if(!is.finite(sum(logProb)))stop(paste("Starting observation model likelihood not finite. Marking process, year",g))
+      if(!is.finite(sum(logProb)))stop(paste("Starting observation model likelihood not finite. Marking process, primary occasion",g))
     }
     #sighting process
     if(J.sight[g]>0){
@@ -240,7 +240,7 @@ init.SMR.Dcov.Open.Generalized.TrapRE <- function(data,inits=NA,M=NA){
             logProb[ii,j] <- dpois(y.mID[i,g,j],lamd[i,j]*K1D.sight[g,j],log=TRUE)
           }
         }
-        if(!is.finite(sum(logProb)))stop(paste("Starting observation model likelihood not finite. Marked with ID observations, year",g))
+        if(!is.finite(sum(logProb)))stop(paste("Starting observation model likelihood not finite. Marked with ID observations, primary occasion",g))
       }
       #marked no ID obs
       logProb <- rep(0,J.sight[g])
@@ -255,7 +255,7 @@ init.SMR.Dcov.Open.Generalized.TrapRE <- function(data,inits=NA,M=NA){
       for(j in 1:J.sight[g]){
         logProb[j] <- dpois(y.mnoID[g,j],lamd.mnoID[j]*K1D.sight[g,j])
       }
-      if(!is.finite(sum(logProb)))stop(paste("Starting observation model likelihood not finite. Marked with no ID observations, year",g))
+      if(!is.finite(sum(logProb)))stop(paste("Starting observation model likelihood not finite. Marked with no ID observations, primary occasion",g))
       #um obs
       logProb <- rep(0,J.sight[g])
       unmarked.inds <- which(mark.states[,g]==0)
@@ -263,21 +263,21 @@ init.SMR.Dcov.Open.Generalized.TrapRE <- function(data,inits=NA,M=NA){
       for(j in 1:J.sight[g]){
         logProb[j] <- dpois(y.um[g,j],lamd.um[j]*K1D.sight[g,j])
       }
-      if(!is.finite(sum(logProb)))stop(paste("Starting observation model likelihood not finite. Unmarked observations, year",g))
+      if(!is.finite(sum(logProb)))stop(paste("Starting observation model likelihood not finite. Unmarked observations, primary occasion",g))
       #unk obs
       logProb <- rep(0,J.sight[g])
       lamd.unk <- colSums(lamd[1:M,1:J.sight[g]])
       for(j in 1:J.sight[g]){
         logProb[j] <- dpois(y.unk[g,j],lamd.unk[j]*K1D.sight[g,j])
       }
-      if(!is.finite(sum(logProb)))stop(paste("Starting observation model likelihood not finite. Unknown marked status observations, year",g))
+      if(!is.finite(sum(logProb)))stop(paste("Starting observation model likelihood not finite. Unknown marked status observations, primary occasion",g))
       #integrated detector-session gamma-effect correction
       active.g <- z.super.init*z.init[,g]
       mu.det.g <- K1D.sight[g,1:J.sight[g]]*colSums(lamd[,1:J.sight[g],drop=FALSE]*active.g)
       logProb.trap.RE <- sum(lgamma(theta.d[g] + y.trap.total[g,1:J.sight[g]]) - lgamma(theta.d[g]) + theta.d[g]*log(theta.d[g]) +
                                mu.det.g - (theta.d[g]+y.trap.total[g,1:J.sight[g]])*log(theta.d[g]+mu.det.g))
       if(!is.finite(logProb.trap.RE)){
-        stop(paste("Starting detector random-effect correction likelihood not finite, year",g))
+        stop(paste("Starting detector random-effect correction likelihood not finite, primary occasion",g))
       }
     }
   }

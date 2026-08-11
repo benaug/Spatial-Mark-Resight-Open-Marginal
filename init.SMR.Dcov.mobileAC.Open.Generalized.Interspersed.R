@@ -106,7 +106,7 @@ init.SMR.Dcov.mobileAC.Open.Generalized.Interspersed <- function(data,inits=NA,M
     if(length(dets)>0){
       first.det <- min(dets)
       last.det <- max(dets)
-      #set detected years to mean trap/telemetry location
+      #set detected primary occasions to mean trap/telemetry location
       for(g in dets){
         locs.g <- matrix(numeric(0),nrow=0,ncol=2)
         trapcaps <- which(y.mark[i,g,]>0)
@@ -189,7 +189,7 @@ init.SMR.Dcov.mobileAC.Open.Generalized.Interspersed <- function(data,inits=NA,M
         }
       }
     }else{
-      # undetected z.super=1: draw year 1 from pi.cell, subsequent from use distribution
+      # undetected z.super=1: draw primary occasion 1 from pi.cell, subsequent from use distribution
       s.cell <- sample(n.cells,1,prob=pi.cell)
       s.pre[i,1,1] <- runif(1,data$dSS[s.cell,1] - data$res/2,data$dSS[s.cell,1] + data$res/2)
       s.pre[i,1,2] <- runif(1,data$dSS[s.cell,2] - data$res/2,data$dSS[s.cell,2] + data$res/2)
@@ -281,7 +281,7 @@ init.SMR.Dcov.mobileAC.Open.Generalized.Interspersed <- function(data,inits=NA,M
     if(length(dets)>0){
       first.det <- min(dets)
       last.det <- max(dets)
-      #set detected years to mean trap/telemetry location
+      #set detected primary occasions to mean trap/telemetry location
       for(g in dets){
         locs.g <- matrix(numeric(0),nrow=0,ncol=2)
         trapcaps <- which(y.mark[i,g,]>0)
@@ -364,7 +364,7 @@ init.SMR.Dcov.mobileAC.Open.Generalized.Interspersed <- function(data,inits=NA,M
         }
       }
     }else{
-      # undetected z.super=1: draw year 1 from pi.cell, subsequent from use distribution
+      # undetected z.super=1: draw primary occasion 1 from pi.cell, subsequent from use distribution
       s.cell <- sample(n.cells,1,prob=pi.cell)
       s.init[i,1,1] <- runif(1,data$dSS[s.cell,1] - data$res/2,data$dSS[s.cell,1] + data$res/2)
       s.init[i,1,2] <- runif(1,data$dSS[s.cell,2] - data$res/2,data$dSS[s.cell,2] + data$res/2)
@@ -397,7 +397,7 @@ init.SMR.Dcov.mobileAC.Open.Generalized.Interspersed <- function(data,inits=NA,M
       }
     }
   }
-  if(!all(is.finite(logProb))){ #can inspect LogProb object to identify problem individual-years
+  if(!all(is.finite(logProb))){ #can inspect LogProb object to identify problem individual-primary occasions
     stop("Starting logProb for activity centers is not finite, raise sigma.move.init. If that doesnt work, you may need to modify model or initialization algorithm.")
   }
   if(any(tel.z.states[z.init==1]==0))stop("At least one z initialized to 1 when tel.z.states=0. Bug in initialization code.")
@@ -431,7 +431,7 @@ init.SMR.Dcov.mobileAC.Open.Generalized.Interspersed <- function(data,inits=NA,M
           logProb[i,j] <- dbinom(y.mark[i,g,j],size=K1D.mark[g,j],prob=pd[i,j],log=TRUE)
         }
       }
-      if(!is.finite(sum(logProb)))stop(paste("Starting observation model likelihood not finite. Marking process, year",g))
+      if(!is.finite(sum(logProb)))stop(paste("Starting observation model likelihood not finite. Marking process, primary occasion",g))
     }
     #sighting process
     if(J.sight[g]>0){
@@ -453,7 +453,7 @@ init.SMR.Dcov.mobileAC.Open.Generalized.Interspersed <- function(data,inits=NA,M
             }
           }
         }
-        if(!is.finite(sum(logProb)))stop(paste("Starting observation model likelihood not finite. Marked with ID observations, year",g))
+        if(!is.finite(sum(logProb)))stop(paste("Starting observation model likelihood not finite. Marked with ID observations, primary occasion",g))
       }
       for(k in 1:K.sight[g]){
         marked.inds.gk <- which(mark.states[,g,k]==1)
@@ -469,13 +469,13 @@ init.SMR.Dcov.mobileAC.Open.Generalized.Interspersed <- function(data,inits=NA,M
         lamd.unk <- colSums(lamd[1:M,1:J.sight[g],drop=FALSE])
         for(j in 1:J.sight[g]){
           if(!is.finite(dpois(y.mnoID[g,j,k],lamd.mnoID[j]*K2D.sight[g,j,k],log=TRUE))){
-            stop(paste("Starting observation model likelihood not finite. Marked with no ID observations, year",g))
+            stop(paste("Starting observation model likelihood not finite. Marked with no ID observations, primary occasion",g))
           }
           if(!is.finite(dpois(y.um[g,j,k],lamd.um[j]*K2D.sight[g,j,k],log=TRUE))){
-            stop(paste("Starting observation model likelihood not finite. Unmarked observations, year",g))
+            stop(paste("Starting observation model likelihood not finite. Unmarked observations, primary occasion",g))
           }
           if(!is.finite(dpois(y.unk[g,j,k],lamd.unk[j]*K2D.sight[g,j,k],log=TRUE))){
-            stop(paste("Starting observation model likelihood not finite. Unknown marked status observations, year",g))
+            stop(paste("Starting observation model likelihood not finite. Unknown marked status observations, primary occasion",g))
           }
         }
       }

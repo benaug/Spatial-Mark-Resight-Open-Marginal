@@ -33,7 +33,7 @@ NimModel <- nimbleCode({
   sigma.move ~ dunif(0,100)
   rsf[1:n.cells] <- InSS[1:n.cells]*exp(rsf.beta*D.cov[1:n.cells])
   for(i in 1:M){
-    s[i,1,1:2] ~ dHabYear1(pi.cell=pi.cell[1:n.cells],cells=cells[1:n.cells.x,1:n.cells.y],res=res,dSS=dSS[1:n.cells,1:2],
+    s[i,1,1:2] ~ dHab1(pi.cell=pi.cell[1:n.cells],cells=cells[1:n.cells.x,1:n.cells.y],res=res,dSS=dSS[1:n.cells,1:2],
                            xlim=xlim[1:2],ylim=ylim[1:2],z.super=z.super[i])
     for(g in 2:n.primary){
       avail.dist[i,g-1,1:n.cells] <- getAvail(s=s[i,g-1,1:2],sigma=sigma.move,res=res,

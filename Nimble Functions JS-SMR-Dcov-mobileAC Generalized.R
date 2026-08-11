@@ -1,4 +1,4 @@
-dHabYear1 <- nimbleFunction(
+dHab1 <- nimbleFunction(
   run = function(x = double(1),pi.cell = double(1),cells = double(2),res = double(0),
                  dSS = double(2),xlim = double(1),ylim = double(1),z.super = double(0),
                  log = integer(0)) {
@@ -1062,7 +1062,7 @@ zSampler <- nimbleFunction(
               log.prop.back <- log.prop.back + dbinom(z.curr[g],1,model$phi[pick,g-1]*z.curr[g-1],log=TRUE)
             }
           }
-          log.prop.back.s <- dHabYear1(s.curr[1,1:2],pi.cell=model$pi.cell[1:n.cells],
+          log.prop.back.s <- dHab1(s.curr[1,1:2],pi.cell=model$pi.cell[1:n.cells],
                                        cells=cells[1:n.cells.x,1:n.cells.y],
                                        dSS=dSS[1:n.cells,1:2],res=res,
                                        xlim=xlim,ylim=ylim,z.super=1,log=TRUE)
@@ -1250,7 +1250,7 @@ zSampler <- nimbleFunction(
                                             cells=cells[1:n.cells.x,1:n.cells.y],
                                             dSS=dSS[1:n.cells,1:2],res=res,
                                             xlim=xlim,ylim=ylim,z.super=1)
-          log.prop.for.s <- dHabYear1(model$s[pick,1,1:2],pi.cell=model$pi.cell[1:n.cells],
+          log.prop.for.s <- dHab1(model$s[pick,1,1:2],pi.cell=model$pi.cell[1:n.cells],
                                       cells=cells[1:n.cells.x,1:n.cells.y],
                                       dSS=dSS[1:n.cells,1:2],res=res,
                                       xlim=xlim,ylim=ylim,z.super=1,log=TRUE)

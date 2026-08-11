@@ -11,8 +11,8 @@ init.SMR.Dcov.Open.Generalized.Interspersed.TrapRE <- function(data,inits=NA,M=N
   n.marked.all <- data$n.marked.all
   n.cap.all <- data$n.cap.all
   n.primary <- data$n.primary
-  J.mark <- unlist(lapply(data$X.mark,nrow)) #traps per year
-  J.sight <- unlist(lapply(data$X.sight,nrow)) #traps per year
+  J.mark <- unlist(lapply(data$X.mark,nrow)) #traps per primary occasion
+  J.sight <- unlist(lapply(data$X.sight,nrow)) #traps per primary occasion
   J.mark.max <- max(J.mark)
   J.sight.max <- max(J.sight)
   K.mark <- data$K.mark
@@ -90,7 +90,7 @@ init.SMR.Dcov.Open.Generalized.Interspersed.TrapRE <- function(data,inits=NA,M=N
   idx <- which(has.mark|has.mID|has.tel)
   
   for(i in idx){
-    trps <- matrix(0,nrow=0,ncol=2) #get locations of traps of capture across years for ind i
+    trps <- matrix(0,nrow=0,ncol=2) #get locations of traps of capture across primary occasions for ind i
     for(g in 1:n.primary){
       if(sum(y.mark[i,g,])>0){
         trps.g <- matrix(X.mark[g,which(y.mark[i,g,]>0),,drop=FALSE],ncol=2,byrow=FALSE)
@@ -105,7 +105,7 @@ init.SMR.Dcov.Open.Generalized.Interspersed.TrapRE <- function(data,inits=NA,M=N
       }
     }
     if(i%in%data$tel.ID){
-      these.locs <- matrix(0,nrow=0,ncol=2) #get telemetry locs across years for tel.ID i
+      these.locs <- matrix(0,nrow=0,ncol=2) #get telemetry locs across primary occasions for tel.ID i
       this.tel.ind <- which(data$tel.ID==i)
       for(g in 1:data$n.tel.sessions[this.tel.ind]){
         if(data$n.locs.ind[this.tel.ind,g]>0){
@@ -235,7 +235,7 @@ init.SMR.Dcov.Open.Generalized.Interspersed.TrapRE <- function(data,inits=NA,M=N
           logProb[i,j] <- dbinom(y.mark[i,g,j],size=K1D.mark[g,j],prob=pd[i,j],log=TRUE)
         }
       }
-      if(!is.finite(sum(logProb)))stop(paste("Starting observation model likelihood not finite. Marking process, year",g))
+      if(!is.finite(sum(logProb)))stop(paste("Starting observation model likelihood not finite. Marking process, primary occasion",g))
     }
     #sighting process
     if(J.sight[g]>0){
@@ -257,7 +257,7 @@ init.SMR.Dcov.Open.Generalized.Interspersed.TrapRE <- function(data,inits=NA,M=N
             }
           }
         }
-        if(!is.finite(sum(logProb)))stop(paste("Starting observation model likelihood not finite. Marked with ID observations, year",g))
+        if(!is.finite(sum(logProb)))stop(paste("Starting observation model likelihood not finite. Marked with ID observations, primary occasion",g))
       }
       for(k in 1:K.sight[g]){
         marked.inds.gk <- which(mark.states[,g,k]==1)
@@ -273,13 +273,13 @@ init.SMR.Dcov.Open.Generalized.Interspersed.TrapRE <- function(data,inits=NA,M=N
         lamd.unk <- colSums(lamd[1:M,1:J.sight[g],drop=FALSE])
         for(j in 1:J.sight[g]){
           if(!is.finite(dpois(y.mnoID[g,j,k],lamd.mnoID[j]*K2D.sight[g,j,k],log=TRUE))){
-            stop(paste("Starting observation model likelihood not finite. Marked with no ID observations, year",g))
+            stop(paste("Starting observation model likelihood not finite. Marked with no ID observations, primary occasion",g))
           }
           if(!is.finite(dpois(y.um[g,j,k],lamd.um[j]*K2D.sight[g,j,k],log=TRUE))){
-            stop(paste("Starting observation model likelihood not finite. Unmarked observations, year",g))
+            stop(paste("Starting observation model likelihood not finite. Unmarked observations, primary occasion",g))
           }
           if(!is.finite(dpois(y.unk[g,j,k],lamd.unk[j]*K2D.sight[g,j,k],log=TRUE))){
-            stop(paste("Starting observation model likelihood not finite. Unknown marked status observations, year",g))
+            stop(paste("Starting observation model likelihood not finite. Unknown marked status observations, primary occasion",g))
           }
         }
       }
@@ -297,7 +297,7 @@ init.SMR.Dcov.Open.Generalized.Interspersed.TrapRE <- function(data,inits=NA,M=N
                                theta.d[g]*log(theta.d[g])+mu.det.g-
                                (theta.d[g]+count.det.g)*log(theta.d[g]+mu.det.g))
       if(!is.finite(logProb.trap.RE)){
-        stop(paste("Starting detector random-effect correction likelihood not finite, year",g))
+        stop(paste("Starting detector random-effect correction likelihood not finite, primary occasion",g))
       }
     }
   }
