@@ -106,7 +106,7 @@ sim.JS.SMR.Dcov.Generalized.Interspersed.TrapRE <- function(D.beta0=NA,D.beta1=N
   #Population dynamics
   N <- rep(NA,n.primary)
   N.recruit <- N.survive <- ER <- rep(NA,n.primary-1)
-  #get expected N in year 1 from D.cov parameters
+  #get expected N in primary occasion 1 from D.cov parameters
   cellArea <- res^2
   lambda.cell <- InSS*exp(D.beta0 + D.beta1*D.cov)*cellArea
   lambda.y1 <- sum(lambda.cell)
@@ -227,7 +227,7 @@ sim.JS.SMR.Dcov.Generalized.Interspersed.TrapRE <- function(D.beta0=NA,D.beta1=N
   tel.z.states <- z*NA
   #observed data, not true states (because we don't know if dead)
   eligible.states <- matrix(1,N.super,n.primary) #eligible based on mark.states collaring history, may be dead and eligible
-  mark.start.global <- matrix(NA,N.super,n.primary) #0 means carried into year; positive values are global K.order occasions
+  mark.start.global <- matrix(NA,N.super,n.primary) #0 means carried into primary occasion; positive values are global K.order occasions
   for(g in 1:n.primary){
     cap.g <- which(mark.caps[,g]>0&eligible.states[,g]==1)
     if(length(cap.g)>0){
@@ -307,7 +307,7 @@ sim.JS.SMR.Dcov.Generalized.Interspersed.TrapRE <- function(D.beta0=NA,D.beta1=N
             }
           }
           if(mark.states[i,g,k]!=expected){
-            cat("real.i =",i,"year =",g,"sight k =",k,"\n")
+            cat("real.i =",i,"primary occasion =",g,"sight k =",k,"\n")
             cat("mark.states =",mark.states[i,g,k],"expected =",expected,"\n")
             cat("sight global occasion =",sightocc[[g]][k],"mark.start.global =",mark.start.global[i,g],"\n")
             stop("mark.states does not match mark.states2D and mark.start.global.")
@@ -358,7 +358,7 @@ sim.JS.SMR.Dcov.Generalized.Interspersed.TrapRE <- function(D.beta0=NA,D.beta1=N
     }
   }
   
-  #simulate telemetry locations for all collared years
+  #simulate telemetry locations for all collared primary occasions
   if(n.tel.locs>0&sum(mark.states2D)>0){
     n.tel.sessions.vec <- rowSums(tel.z.states==1,na.rm=TRUE)
     tel.ID <- which(n.tel.sessions.vec>0)

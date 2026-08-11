@@ -80,7 +80,7 @@ sim.JS.SMR.Dcov.mobileAC.Generalized.TrapRE <- function(D.beta0=NA,D.beta1=NA,D.
   #Population dynamics
   N <- rep(NA,n.primary)
   N.recruit <- N.survive <- ER <- rep(NA,n.primary-1)
-  #get expected N in year 1 from D.cov parameters
+  #get expected N in primary occasion 1 from D.cov parameters
   cellArea <- res^2
   lambda.cell <- InSS*exp(D.beta0 + D.beta1*D.cov)*cellArea
   lambda.y1 <- sum(lambda.cell)
@@ -128,7 +128,7 @@ sim.JS.SMR.Dcov.mobileAC.Generalized.TrapRE <- function(D.beta0=NA,D.beta1=NA,D.
   J.sight.max <- max(J.sight)
   K.sight.max <- max(K.sight)
 
-  # simulate a population of activity centers for year 1 proportional to D.cov
+  # simulate a population of activity centers for primary occasion 1 proportional to D.cov
   N.super <- nrow(z)
   library(truncnorm)
   pi.cell <- lambda.cell/sum(lambda.cell)
@@ -142,7 +142,7 @@ sim.JS.SMR.Dcov.mobileAC.Generalized.TrapRE <- function(D.beta0=NA,D.beta1=NA,D.
     s[i,1,1] <- runif(1,s.xlim[1],s.xlim[2])
     s[i,1,2] <- runif(1,s.ylim[1],s.ylim[2])
   }
-  #subsequent years
+  #subsequent primary occasions
   avail.dist <- use.dist <- array(NA,dim=c(N.super,n.primary-1,n.cells))
   rsf <- exp(rsf.beta*D.cov)
   rsf[InSS==0] <- 0 #disallow individuals moving into nonhabitat
@@ -266,7 +266,7 @@ sim.JS.SMR.Dcov.mobileAC.Generalized.TrapRE <- function(D.beta0=NA,D.beta1=NA,D.
   y.mnoID <- y.um <- y.unk <- matrix(0,n.primary,J.sight.max)
   
   for(g in 1:n.primary){
-    if(K.sight[g]>0){ #skip if no effort in this year
+    if(K.sight[g]>0){ #skip if no effort in this primary occasion
       #loop over cells with positive counts
       idx <- which(y[,g,]>0,arr.ind=TRUE)
       for(l in 1:nrow(idx)){
@@ -278,7 +278,7 @@ sim.JS.SMR.Dcov.mobileAC.Generalized.TrapRE <- function(D.beta0=NA,D.beta1=NA,D.
       }
       marked.inds <- which(mark.states[,g]==1)
       unmarked.inds <- which(mark.states[,g]==0)
-      y.mID[,g,] <- apply(y.event[ID.marked.all,g,,1],c(1,2),sum) #include all marked individuals for consistent individual numbers across years
+      y.mID[,g,] <- apply(y.event[ID.marked.all,g,,1],c(1,2),sum) #include all marked individuals for consistent individual numbers across primary occasions
       if(n.marked[g]>0){
         if(n.marked[g]==1){
           y.mnoID[g,] <- y.event[marked.inds,g,,2]
@@ -296,7 +296,7 @@ sim.JS.SMR.Dcov.mobileAC.Generalized.TrapRE <- function(D.beta0=NA,D.beta1=NA,D.
     }
   }
   
-  #simulate telemetry locations for all collared years
+  #simulate telemetry locations for all collared primary occasions
   if(n.tel.locs>0&sum(mark.states)>0){
     n.tel.sessions.vec <- rowSums(tel.z.states==1,na.rm=TRUE)
     tel.ID <- which(n.tel.sessions.vec>0)
@@ -349,7 +349,7 @@ sim.JS.SMR.Dcov.mobileAC.Generalized.TrapRE <- function(D.beta0=NA,D.beta1=NA,D.
   #   for(i in 1:n.tel.inds){
   #     tel.session[i,1:n.tel.sessions[i]] <- which(tel.z.states[ID.marked.all[i],]==1)
   #     for(g in 1:n.tel.sessions[i]){
-  #       #if adding movement, reference correct s years
+  #       #if adding movement, reference correct s primary occasions
   #       locs[i,g,,] <- c(rnorm(n.tel.locs,s[ID.marked.all[i],1],sigma[tel.session[i,g]]),
   #                        rnorm(n.tel.locs,s[ID.marked.all[i],2],sigma[tel.session[i,g]]))
   #     }
