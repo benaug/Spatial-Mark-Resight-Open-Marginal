@@ -13,24 +13,24 @@ nimbleOptions(determinePredictiveNodesInModel = FALSE)
 library(RColorBrewer)
 cols1 <- brewer.pal(9,"Greens")
 
-n.primary <- 6 #number of years
-phi <- rep(0.8,n.primary-1) #yearly per-capita recruitment
-gamma <- rep(0.2,n.primary-1) #yearly per-capita recruitment
+n.primary <- 6 #number of primary occasions
+phi <- rep(0.8,n.primary-1) #per-capita recruitment by primary occasion
+gamma <- rep(0.2,n.primary-1) #per-capita recruitment by primary occasion
 p0 <- rep(0.25,n.primary) #marking process p0
 lam0 <- rep(0.25,n.primary) #sighting process lam0
-sigma <- rep(0.5,n.primary) #yearly detection function scale
-sigma.move <- 2 # yearly relocation scale
-rsf.beta <- 0.5 #yearly relocation RSF coefficient
-p.mark <- rep(0.75,n.primary) #yearly probability of marking given captured in marking process
-#Number of occasions per year per method
-#to skip sampling by a method in a year, set its K=0
-K.mark <- c(5,5,5,5,5,5) #yearly marking occasions
-K.sight <- c(5,5,5,5,5,5) #yearly resighting occasions
+sigma <- rep(0.5,n.primary) #detection function scale by primary occasion
+sigma.move <- 2 #relocation scale by primary occasion
+rsf.beta <- 0.5 #relocation RSF coefficient by primary occasion
+p.mark <- rep(0.75,n.primary) #probability of marking given captured in marking process by primary occasion
+#Number of occasions per primary occasion per method
+#to skip sampling by a method in a primary occasion, set its K=0
+K.mark <- c(5,5,5,5,5,5) #marking occasions by primary occasion
+K.sight <- c(5,5,5,5,5,5) #resighting occasions by primary occasion
 if(length(K.mark)!=length(K.sight))stop("K.mark and K.sight must be same length")
 if(length(K.mark)!=n.primary)stop("K.mark and K.sight must be of length n.primary")
 
 #theta is probability of observing each sample type for marked and unmarked individuals
-#assuming the same over years
+#assuming the same over primary occasions
 theta.marked <- c(0.95,0.025,0.025) #P(ID, Marked no ID, unk status). must sum to 1
 theta.unmarked <- 0.95 #prob known marked status. #P(ID, Marked no ID, unk status)=(0,theta.unmarked,1-theta.unmarked)
 
@@ -148,11 +148,11 @@ points(X.all,pch=4,col="darkred",lwd=2)
 #Density covariates
 D.beta0 <- -0.75 #data simulator uses intercept for marked + unmarked
 D.beta1 <- 0.5
-#what is implied expected year 1 N in state space?
+#what is implied expected primary occasion 1 N in state space?
 lambda.cell <- InSS*exp(D.beta0 + D.beta1*D.cov)*cellArea
-sum(lambda.cell) #expected year 1 N in state space
+sum(lambda.cell) #expected primary occasion 1 N in state space
 
-image(x.vals,y.vals,matrix(lambda.cell,n.cells.x,n.cells.y),main="Expected Density in Year 1",col=cols1)
+image(x.vals,y.vals,matrix(lambda.cell,n.cells.x,n.cells.y),main="Expected Density in primary occasion 1",col=cols1)
 points(X.sight.all,pch=4,cex=1,lwd=2)
 points(X.mark.all,pch=4,cex=1,lwd=2,col="darkred")
 
@@ -160,7 +160,7 @@ points(X.mark.all,pch=4,cex=1,lwd=2,col="darkred")
 #this is a simplified scenario for using telemetry collars for marks
 n.tel.locs <- 15 #number of locs per individual
 mark.year.pars <- c(2,2,3) #parameters for truncated poisson: c(lambda, lower truncation, upper truncation)
-#data simulator requires lower bound be 1 or higher. 1 means it fails before 2nd year
+#data simulator requires lower bound be 1 or higher. 1 means it fails before 2nd primary occasion
 #mark lifetime frequencies for mark.year.pars
 table(rtruncpois(10000,lambda=mark.year.pars[1],lower=mark.year.pars[2],upper=mark.year.pars[3]))/10000
 #marking protocol: #1) never replace a mark if currently collared on capture 2) always replace
@@ -178,7 +178,7 @@ data <- sim.JS.SMR.Dcov.mobileAC.Generalized(D.beta0=D.beta0,D.beta1=D.beta1,D.c
                                              p.mark=p.mark,n.tel.locs=n.tel.locs)
 
 #what is observed data? Note data objects have all n.primarys with all 0 data if no effort for a method
-#Could be structured without years with no effort, but that would require more work changing custom
+#Could be structured without primary occasions with no effort, but that would require more work changing custom
 #N/z updates.
 
 #mark and sight data summed over occasions
@@ -192,14 +192,14 @@ data <- sim.JS.SMR.Dcov.mobileAC.Generalized(D.beta0=D.beta0,D.beta1=D.beta1,D.c
 #str(data$mark.states) #mark status history: n.marked.all x n.primary
 #str(data$tel.z.states) #telemetry survival observations: n.marked.all x n.primary
 #str(data$locs) #telemetry locations: n.tel.inds x n.tel.sessions.max x n.tel.locs.max x 2
-#use tel.ID and tel.session to map to individual and population year
+#use tel.ID and tel.session to map to individual and population primary occasion
 
 
 #these plots are cool, you should look at these.
 
-#visualize expected relative density and realized activity centers in each year
-#year 1: cell colors depict expected relative density in year 1
-#years 2 on: cell colors depict expected relative density given the realized s[g-1] and z[g-1] from previous year
+#visualize expected relative density and realized activity centers in each primary occasion
+#primary occasion 1: cell colors depict expected relative density in primary occasion 1
+#primary occasions 2 on: cell colors depict expected relative density given the realized s[g-1] and z[g-1] from previous primary occasion
 #points are realized activity centers for this expectation
 # par(mfrow=c(1,1),ask=FALSE)
 # for(plot.year in 1:n.primary){
@@ -210,7 +210,7 @@ data <- sim.JS.SMR.Dcov.mobileAC.Generalized(D.beta0=D.beta0,D.beta1=D.beta1,D.c
 #   points(data$truth$s[data$truth$z[,plot.year]==1,plot.year,],pch=16)
 # }
 
-#visualize individual movement trajectories. Start year is larger circle
+#visualize individual movement trajectories. Start primary occasion is larger circle
 #will be a mess with a lot of individuals.
 # ind.cols <- c("#E63946","#FF9F1C","#FFDD00","#2EC4B6","#3A86FF",
 #               "#8338EC","#FB5607","#06D6A0","#FFB700","#118AB2",
@@ -222,16 +222,16 @@ data <- sim.JS.SMR.Dcov.mobileAC.Generalized(D.beta0=D.beta0,D.beta1=D.beta1,D.c
 # image(x.vals, y.vals, matrix(D.cov*InSS, n.cells.x, n.cells.y), col=cols1,
 #       main="Movement Trajectories over D.cov")
 # for(i in 1:data$truth$N.super){
-#   #skip individuals alive for less than 2 years
+#   #skip individuals alive for less than 2 primary occasions
 #   if(sum(data$truth$z[i,])<2) next
 #   ind.col <- ind.cols[(i-1) %% n.colors + 1]
-#   alive.years <- which(data$truth$z[i,]==1) #get years alive
+#   alive.years <- which(data$truth$z[i,]==1) #get primary occasions alive
 #   # plot points for all alive years
 #   points(data$truth$s[i,alive.years,1],
 #          data$truth$s[i,alive.years,2],
 #          pch=16, col=ind.col, cex=0.8)
 # 
-#   #plot lines between consecutive alive years
+#   #plot lines between consecutive alive primary occasions
 #   if(length(alive.years)>1){
 #     for(t in 1:(length(alive.years)-1)){
 #       if(alive.years[t+1] == alive.years[t]+1){
@@ -247,7 +247,7 @@ data <- sim.JS.SMR.Dcov.mobileAC.Generalized(D.beta0=D.beta0,D.beta1=D.beta1,D.c
 # }
 # points(X.all,pch=4,cex=0.75,lwd=2)
 
-# can look at individual by year availability and use distributions
+# can look at individual by primary occasion availability and use distributions
 # i <- 1
 # g <- 1
 # par(mfrow=c(3,1))
@@ -261,21 +261,21 @@ data <- sim.JS.SMR.Dcov.mobileAC.Generalized(D.beta0=D.beta0,D.beta1=D.beta1,D.c
 # points(data$truth$s[i,g,1],data$truth$s[i,g,2],pch=16,col="darkred")
 # par(mfrow=c(1,1))
 
-data$N #yearly abundance
-colSums(apply(data$y.mark>0,c(1,2),sum)>0) #total marking process captures per year
-colSums(data$mark.deploy) #total marks deployed per year
+data$N #abundance by primary occasion
+colSums(apply(data$y.mark>0,c(1,2),sum)>0) #total marking process captures per primary occasion
+colSums(data$mark.deploy) #total marks deployed per primary occasion
 rowSums(data$mark.deploy) #total marks deployed per captured individual
-data$n.marked #marks active per year
+data$n.marked #marks active per primary occasion
 
 #total detected individuals
 colSums(apply(data$truth$y,c(1,2),sum)>0)
 #marked spatial recaps
 table(apply(1*(data$truth$y.mark>0),c(1,2),sum))
 
-#visualize detections by year. only showing SCR and identified SMR detections
+#visualize detections by primary occasion. only showing SCR and identified SMR detections
 for(g in 1:n.primary){
   image(data$x.vals,data$y.vals,matrix(data$D.cov*data$InSS,data$n.cells.x,data$n.cells.y),
-        main=paste("Year",g),xlab="X",ylab="Y",col=cols1)
+        main=paste("primary occasion",g),xlab="X",ylab="Y",col=cols1)
   if(data$J.sight[g]>0){
     points(data$X.sight[[g]],pch=4,lwd=2)
   }
@@ -342,7 +342,7 @@ M <- 250 #data augmentation level.
 if(M < (data$n.marked.all)+1) stop("M must be larger than the number of marked individuals plus at least one unmarked individual.")
 #pull these from data (won't be in environment if not simulated directly above)
 n.primary <- data$n.primary #number of primary sessions
-n.marked <- data$n.marked #number of individuals carrying a mark in each year
+n.marked <- data$n.marked #number of individuals carrying a mark in each primary occasion
 n.marked.all <- data$n.marked.all #total number of individuals ever marked
 n.cap.all <- data$n.cap.all #total number of individuals ever captured (might be every marked individual)
 J.mark <- data$J.mark
@@ -378,7 +378,7 @@ inits <- list(p0=rep(0.1,n.primary),lam0=rep(0.25,n.primary),#initializing with 
 #This function structures the simulated data to fit the model in Nimble (some more restructing below)
 nimbuild <- init.SMR.Dcov.mobileAC.Open.Generalized(data,inits,M=M)
 
-#make sure that if we know an individual is marked in year g, it is known to be alive in year g
+#make sure that if we know an individual is marked in primary occasion g, it is known to be alive in primary occasion g
 #otherwise, how would you know it still has a mark?
 mark.consistency <- which(data$mark.states==1&nimbuild$y2D[1:data$n.marked.all,]==0,arr.ind=TRUE)
 if(nrow(mark.consistency)==0){
@@ -388,10 +388,10 @@ if(nrow(mark.consistency)==0){
   print(mark.consistency)
 }
 
-#plot to check s inits by year
+#plot to check s inits by primary occasion
 for(g in 1:n.primary){
   image(x.vals,y.vals,matrix(D.cov*InSS,n.cells.x,n.cells.y),
-        main=paste("Year",g),xlab="X",ylab="Y",col=cols1)
+        main=paste("primary occasion",g),xlab="X",ylab="Y",col=cols1)
   if(J.sight[g]>0){
     points(data$X.sight[[g]],pch=4,lwd=2)
   }
@@ -427,7 +427,7 @@ for(g in 1:n.primary){
   }
 }
 
-#these indicate in which year marking/sighting occurs and how many total sessions of each
+#these indicate in which primary occasion marking/sighting occurs and how many total sessions of each
 mark.years <- which(K.mark!=0)
 sight.years <- which(K.sight!=0)
 n.mark.years <- length(mark.years)
@@ -459,13 +459,13 @@ Nimdata <- list(y.mark=nimbuild$y.mark, #marking process
                 y.mnoID=nimbuild$y.mnoID, #marked without ID
                 y.um=nimbuild$y.um, #unmarked
                 y.unk=nimbuild$y.unk, #unk marked status
-                mark.states=nimbuild$mark.states, #mark state history (who is marked in each year)
+                mark.states=nimbuild$mark.states, #mark state history (who is marked in each primary occasion)
                 tel.z.states=nimbuild$tel.z.states, #telemetry z state observations
                 cells=cells,InSS=InSS,dSS=dSS,
                 X.mark=nimbuild$X.mark,X.sight=nimbuild$X.sight,locs=data$locs)
 
 # set parameters to monitor
-parameters <- c('N','gamma.fixed','N.recruit','N.survive','N.super','lambda.y1',
+parameters <- c('N','gamma','N.recruit','N.survive','N.super','lambda.y1',
                 'phi.fixed','p0','lam0','sigma.fixed','theta.marked','theta.unmarked',
                 'D0','D.beta1','sigma.move','rsf.beta')
 nt <- 1 #thinning rate
@@ -473,9 +473,9 @@ nt <- 1 #thinning rate
 # Build the model, configure the mcmc, and compile
 start.time <- Sys.time()
 Rmodel <- nimbleModel(code=NimModel, constants=constants, data=Nimdata,check=FALSE,inits=Niminits)
-config.nodes <- c('phi.fixed','gamma.fixed','p0','lam0','sigma.fixed',
+config.nodes <- c('phi.fixed','gamma','p0','lam0','sigma.fixed',
                   'theta.marked','theta.unmarked[2:3]','sigma.move','rsf.beta')
-#use this above if theta.unmarked is year specific (no change for theta.marked): paste('theta.unmarked[1:',n.primary,',2:3',']')
+#use this above if theta.unmarked is primary occasion specific (no change for theta.marked): paste('theta.unmarked[1:',n.primary,',2:3',']')
 conf <- configureMCMC(Rmodel,monitors=parameters,thin=nt,nodes=config.nodes)
 
 #add N/z sampler
@@ -680,11 +680,24 @@ for(i in 1:M){
 # }
 
 
-#usually a good idea with year-specific sigma
+#usually a good idea with primary occasion-specific sigma
 # for(g in 1:n.primary){
 #   conf$addSampler(target = c(paste("lam0[",g,"]"),paste("sigma[",g,"]")),
 #                   type = 'RW_block',control=list(adaptive=TRUE),silent = TRUE)
 # }
+
+#optional truncated gamma poisson conjugate samplers. 
+#I would always use these as long as you keep uniform priors on gamma or gamma[g]
+#Typically gives you much greater ESS that propagates to N/N.recruit
+#if one gamma per primary occasion
+# for(g in 1:(n.primary-1)){
+#   target <- paste0("gamma[",g,"]")
+#   conf$removeSamplers(target)
+#   conf$addSampler(target=target,type=truncGammaPoisSampler)
+# }
+# #if gamma is fixed
+conf$removeSamplers("gamma")
+conf$addSampler(target="gamma",type=truncGammaPoisSampler)
 
 conf$addSampler(target = c("D0","D.beta1"),
                 type = 'AF_slice',control=list(adaptive=TRUE),silent = TRUE)
@@ -721,9 +734,9 @@ diag(tmp) <- NA
 which(abs(tmp)>0.5,arr.ind=TRUE)
 
 
-#Plot N by year with method and mark info
-marks.deployed <- colSums(data$mark.deploy) #marks deployed per year
-marks.active <- data$n.marked #marks active per year
+#Plot N by primary occasion with method and mark info
+marks.deployed <- colSums(data$mark.deploy) #marks deployed per primary occasion
+marks.active <- data$n.marked #marks active per primary occasion
 methods <- ifelse(K.mark > 0 & K.sight > 0, "M-S",
                   ifelse(K.mark > 0, "M",
                          ifelse(K.sight > 0, "S", NA)))

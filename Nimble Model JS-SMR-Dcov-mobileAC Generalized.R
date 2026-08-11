@@ -13,19 +13,19 @@ NimModel <- nimbleCode({
   lambda.y1 <- D.intercept*pi.denom #Expected starting population size
   N[1] ~ dpois(lambda.y1) #Realized starting population size
   for(g in 2:n.primary){
-    N[g] <- N.survive[g-1] + N.recruit[g-1] #yearly abundance
+    N[g] <- N.survive[g-1] + N.recruit[g-1] #abundance by primary occasion
     #N.recruit and N.survive information also contained in z/z.start + z.stop
     #N.recruit has distributions assigned below, but survival distributions defined on z
   }
   N.super <- N[1] + sum(N.recruit[1:(n.primary-1)]) #size of superpopulation
   
   #Recruitment
-  gamma.fixed ~ dunif(0,2)
+  gamma ~ dunif(0,2) #fixed recruitment parameter
   for(g in 1:(n.primary-1)){
-    # gamma[g] ~ dunif(0,2) # yearly recruitment priors
-    gamma[g] <- gamma.fixed
-    ER[g] <- N[g]*gamma[g] #yearly expected recruits
-    N.recruit[g] ~ dpois(ER[g]) #yearly realized recruits
+    ER[g] <- N[g]*gamma #expected recruits, if gamma fixed
+    # gamma[g] ~ dunif(0,2) #recruitment priors by primary occasion
+    # ER[g] <- N[g]*gamma[g] #expected recruits, if gamma 
+    N.recruit[g] ~ dpois(ER[g]) #realized recruits
   }
   
   #Mobile activity centers
@@ -46,10 +46,10 @@ NimModel <- nimbleCode({
   }
   
   #Survival (phi must have M x n.primary - 1 dimension for custom updates to work)
-  #without individual or year effects, use for loop to plug into phi[i,g]
+  #without individual or primary occasion effects, use for loop to plug into phi[i,g]
   phi.fixed ~ dunif(0,1)
   for(i in 1:M){
-    for(g in 1:(n.primary-1)){ #plugging same individual phi's into each year for custom update
+    for(g in 1:(n.primary-1)){ #plugging same individual phi's into each primary occasion for custom update
       phi[i,g] <- phi.fixed
     }
     #survival likelihood (bernoulli) that only sums from z.start to z.stop
@@ -61,7 +61,7 @@ NimModel <- nimbleCode({
   }
   
   ##Observation Model##
-  #sample type observation model priors (Dirichlet), fixed across years
+  #sample type observation model priors (Dirichlet), fixed across primary occasions
   alpha.marked[1] <- 1
   alpha.marked[2] <- 1
   alpha.marked[3] <- 1
@@ -71,13 +71,13 @@ NimModel <- nimbleCode({
   theta.unmarked[1] <- 0
   theta.unmarked[2:3] ~ ddirch(alpha.unmarked[1:2])
   sigma.fixed ~ dunif(0,10)
-  for(g in 1:n.primary){ #sigma informed by data except in years with no capture effort and no telemetry
-    # sigma[g] ~ dunif(0,10) #sigma varies by year, shared across methods
-    sigma[g] <- sigma.fixed #sigma fixed across years, shared across methods
+  for(g in 1:n.primary){ #sigma informed by data except in primary occasions with no capture effort and no telemetry
+    # sigma[g] ~ dunif(0,10) #sigma varies by primary occasion, shared across methods
+    sigma[g] <- sigma.fixed #sigma fixed across primary occasions, shared across methods
   }
   #marking process
   for(g in 1:n.mark.years){
-    p0[g] ~ dunif(0,1) #p0 varies by year
+    p0[g] ~ dunif(0,1) #p0 varies by primary occasion
     for(i in 1:M){
       pd[i,mark.years[g],
          1:J.mark[mark.years[g]]] <- GetDetectionProb(s=s[i,mark.years[g],1:2],
@@ -93,7 +93,7 @@ NimModel <- nimbleCode({
   }
   #sighting process
   for(g in 1:n.sight.years){
-    lam0[g] ~ dunif(0,5) #lam0 varies by year
+    lam0[g] ~ dunif(0,5) #lam0 varies by primary occasion
     for(i in 1:M){
       lam[i,sight.years[g],
           1:J.sight[sight.years[g]]] <- GetDetectionRate(s=s[i,sight.years[g],1:2],

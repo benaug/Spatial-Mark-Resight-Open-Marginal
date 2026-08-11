@@ -13,25 +13,25 @@ nimbleOptions(determinePredictiveNodesInModel = FALSE)
 library(RColorBrewer)
 cols1 <- brewer.pal(9,"Greens")
 
-n.primary <- 6 #number of years
-phi <- rep(0.8,n.primary-1) #yearly per-capita recruitment
-gamma <- rep(0.2,n.primary-1) #yearly per-capita recruitment
+n.primary <- 6 #number of primary occasions
+phi <- rep(0.8,n.primary-1) #per-capita recruitment by primary occasion
+gamma <- rep(0.2,n.primary-1) #per-capita recruitment by primary occasion
 p0 <- rep(0.25,n.primary) #marking process p0
 lam0 <- rep(0.25,n.primary) #sighting process lam0
 theta.d <- rep(5,n.primary) #trap-level RE parameter. multiplicative effect. small effects may not be identifiable
 par(mfrow=c(1,1),ask=FALSE)
 hist(rgamma(1000,theta.d,theta.d),breaks=100) #visualize distribution of trap-level REs
-sigma <- rep(0.5,n.primary) #yearly detection function scale
-p.mark <- rep(0.75,n.primary) #yearly probability of marking given captured in marking process
-#Number of occasions per year per method
-#to skip sampling by a method in a year, set its K=0
-K.mark <- c(5,0,0,5,0,0) #yearly marking occasions
-K.sight <- c(15,15,15,15,15,15) #yearly resighting occasions
+sigma <- rep(0.5,n.primary) #detection function scale by primary occasion
+p.mark <- rep(0.75,n.primary) #probability of marking given captured in marking process by primary occasion
+#Number of occasions per primary occasion per method
+#to skip sampling by a method in a primary occasion, set its K=0
+K.mark <- c(5,0,0,5,0,0) #marking occasions by primary occasion
+K.sight <- c(15,15,15,15,15,15) #resighting occasions by primary occasion
 if(length(K.mark)!=length(K.sight))stop("K.mark and K.sight must be same length")
 if(length(K.mark)!=n.primary)stop("K.mark and K.sight must be of length n.primary")
 
 #theta is probability of observing each sample type for marked and unmarked individuals
-#assuming the same over years
+#assuming the same over primary occasions
 theta.marked <- c(0.75,0.15,0.1) #P(ID, Marked no ID, unk status). must sum to 1
 theta.unmarked <- 0.75 #prob known marked status. #P(ID, Marked no ID, unk status)=(0,theta.unmarked,1-theta.unmarked)
 
@@ -146,11 +146,11 @@ points(X.all,pch=4,col="darkred",lwd=2)
 #Density covariates
 D.beta0 <- -0.75 #data simulator uses intercept for marked + unmarked
 D.beta1 <- 1
-#what is implied expected year 1 N in state space?
+#what is implied expected primary occasion 1 N in state space?
 lambda.cell <- InSS*exp(D.beta0 + D.beta1*D.cov)*cellArea
-sum(lambda.cell) #expected year 1 N in state space
+sum(lambda.cell) #expected primary occasion 1 N in state space
 
-image(x.vals,y.vals,matrix(lambda.cell,n.cells.x,n.cells.y),main="Expected Density in Year 1",col=cols1)
+image(x.vals,y.vals,matrix(lambda.cell,n.cells.x,n.cells.y),main="Expected Density in primary occasion 1",col=cols1)
 points(X.sight.all,pch=4,cex=1,lwd=2)
 points(X.mark.all,pch=4,cex=1,lwd=2,col="darkred")
 
@@ -158,7 +158,7 @@ points(X.mark.all,pch=4,cex=1,lwd=2,col="darkred")
 #this is a simplified scenario for using telemetry collars for marks
 n.tel.locs <- 15 #number of locs per individual
 mark.year.pars <- c(2,2,3) #parameters for truncated poisson: c(lambda, lower truncation, upper truncation)
-#data simulator requires lower bound be 1 or higher. 1 means it fails before 2nd year
+#data simulator requires lower bound be 1 or higher. 1 means it fails before 2nd primary occasion
 #mark lifetime frequencies for mark.year.pars
 table(rtruncpois(10000,lambda=mark.year.pars[1],lower=mark.year.pars[2],upper=mark.year.pars[3]))/10000
 #marking protocol: #1) never replace a mark if currently collared on capture 2) always replace
@@ -176,7 +176,7 @@ data <- sim.JS.SMR.Dcov.Generalized.TrapRE(D.beta0=D.beta0,D.beta1=D.beta1,D.cov
             p.mark=p.mark,n.tel.locs=n.tel.locs)
 
 #what is observed data? Note data objects have all n.primarys with all 0 data if no effort for a method
-#Could be structured without years with no effort, but that would require more work changing custom
+#Could be structured without primary occasions with no effort, but that would require more work changing custom
 #N/z updates.
 
 #mark and sight data summed over occasions
@@ -190,16 +190,16 @@ data <- sim.JS.SMR.Dcov.Generalized.TrapRE(D.beta0=D.beta0,D.beta1=D.beta1,D.cov
 #str(data$mark.states) #mark status history: n.marked.all x n.primary
 #str(data$tel.z.states) #telemetry survival observations: n.marked.all x n.primary
 #str(data$locs) #telemetry locations: n.tel.inds x n.tel.sessions.max x n.tel.locs.max x 2
-#use tel.ID and tel.session to map to individual and population year
+#use tel.ID and tel.session to map to individual and population primary occasion
 
 #session by trap level counts. need obvious overdispersion and larger counts for identifiability of trap RE parameter(s)
 hist(apply(data$truth$y,c(2,3),sum))
 
-data$N #yearly abundance
-colSums(apply(data$y.mark>0,c(1,2),sum)>0) #total marking process captures per year
-colSums(data$mark.deploy) #total marks deployed per year
+data$N #abundance by primary occasion
+colSums(apply(data$y.mark>0,c(1,2),sum)>0) #total marking process captures per primary occasion
+colSums(data$mark.deploy) #total marks deployed per primary occasion
 rowSums(data$mark.deploy) #total marks deployed per captured individual
-data$n.marked #marks active per year
+data$n.marked #marks active per primary occasion
 
 #total detected individuals
 colSums(apply(data$truth$y,c(1,2),sum)>0)
@@ -212,10 +212,10 @@ points(X.sight.all,pch=4,lwd=2)
 points(X.mark.all,pch=4,col="darkred",lwd=2)
 points(data$truth$s,pch=16)
 
-#visualize detections by year. only showing SCR and identified SMR detections
+#visualize detections by primary occasion. only showing SCR and identified SMR detections
 for(g in 1:n.primary){
   image(data$x.vals,data$y.vals,matrix(data$D.cov*data$InSS,data$n.cells.x,data$n.cells.y),
-        main=paste("Year",g),xlab="X",ylab="Y",col=cols1)
+        main=paste("primary occasion",g),xlab="X",ylab="Y",col=cols1)
   if(data$J.sight[g]>0){
     points(data$X.sight[[g]],pch=4,lwd=2)
   }
@@ -281,7 +281,7 @@ M <- 250 #data augmentation level.
 if(M < (data$n.marked.all)+1) stop("M must be larger than the number of marked individuals plus at least one unmarked individual.")
 #pull these from data (won't be in environment if not simulated directly above)
 n.primary <- data$n.primary #number of primary sessions
-n.marked <- data$n.marked #number of individuals carrying a mark in each year
+n.marked <- data$n.marked #number of individuals carrying a mark in each primary occasion
 n.marked.all <- data$n.marked.all #total number of individuals ever marked
 n.cap.all <- data$n.cap.all #total number of individuals ever captured (might be every marked individual)
 J.mark <- data$J.mark
@@ -316,7 +316,7 @@ inits <- list(p0=rep(0.1,n.primary),lam0=rep(0.25,n.primary),
 #This function structures the simulated data to fit the model in Nimble (some more restructing below)
 nimbuild <- init.SMR.Dcov.Open.Generalized.TrapRE(data,inits,M=M)
 
-#make sure that if we know an individual is marked in year g, it is known to be alive in year g
+#make sure that if we know an individual is marked in primary occasion g, it is known to be alive in primary occasion g
 #otherwise, how would you know it still has a mark?
 mark.consistency <- which(data$mark.states==1&nimbuild$y2D[1:data$n.marked.all,]==0,arr.ind=TRUE)
 if(nrow(mark.consistency)==0){
@@ -326,10 +326,10 @@ if(nrow(mark.consistency)==0){
   print(mark.consistency)
 }
 
-#plot to check s inits by year
+#plot to check s inits by primary occasion
 for(g in 1:n.primary){
   image(x.vals,y.vals,matrix(D.cov*InSS,n.cells.x,n.cells.y),
-        main=paste("Year",g),xlab="X",ylab="Y",col=cols1)
+        main=paste("primary occasion",g),xlab="X",ylab="Y",col=cols1)
   points(data$X.sight[[g]],pch=4,lwd=2)
   points(data$X.mark[[g]],pch=4,lwd=2,col="darkred")
   points(nimbuild$s[nimbuild$z[,g]==1,1],nimbuild$s[nimbuild$z[,g]==1,2],pch=16) #initialized activity centers
@@ -358,7 +358,7 @@ for(g in 1:n.primary){
   }
 }
 
-#these indicate in which year marking/sighting occurs and how many total sessions of each
+#these indicate in which primary occasion marking/sighting occurs and how many total sessions of each
 mark.years <- which(K.mark!=0)
 sight.years <- which(K.sight!=0)
 n.mark.years <- length(mark.years)
@@ -396,7 +396,7 @@ Nimdata <- list(y.mark=nimbuild$y.mark, #marking process
                 X.mark=nimbuild$X.mark,X.sight=nimbuild$X.sight,locs=data$locs)
 
 # set parameters to monitor
-parameters <- c('N','gamma.fixed','N.recruit','N.survive','N.super','lambda.y1','theta.d.fixed',
+parameters <- c('N','gamma','N.recruit','N.survive','N.super','lambda.y1','theta.d.fixed',
                 'phi.fixed','p0','lam0','sigma.fixed','theta.marked','theta.unmarked',
                 'D0','D.beta1')
 nt <- 1 #thinning rate
@@ -404,7 +404,7 @@ nt <- 1 #thinning rate
 # Build the model, configure the mcmc, and compile
 start.time <- Sys.time()
 Rmodel <- nimbleModel(code=NimModel, constants=constants, data=Nimdata,check=FALSE,inits=Niminits)
-config.nodes <- c('phi.fixed','gamma.fixed','p0','lam0','sigma.fixed','theta.marked','theta.unmarked[2:3]','theta.d.fixed')
+config.nodes <- c('phi.fixed','gamma','p0','lam0','sigma.fixed','theta.marked','theta.unmarked[2:3]','theta.d.fixed')
 #use this above if theta.unmarked is year specific (no change for theta.marked): paste('theta.unmarked[1:',n.primary,',2:3',']')
 conf <- configureMCMC(Rmodel,monitors=parameters,thin=nt,nodes=config.nodes)
 
@@ -464,6 +464,19 @@ for(i in 1:M){
                                                      mark.states=nimbuild$mark.states[i,]),
                   silent = TRUE)
 }
+
+#optional truncated gamma poisson conjugate samplers. 
+#I would always use these as long as you keep uniform priors on gamma or gamma[g]
+#Typically gives you much greater ESS that propagates to N/N.recruit
+#if one gamma per primary occasion
+# for(g in 1:(n.primary-1)){
+#   target <- paste0("gamma[",g,"]")
+#   conf$removeSamplers(target)
+#   conf$addSampler(target=target,type=truncGammaPoisSampler)
+# }
+# #if gamma is fixed
+conf$removeSamplers("gamma")
+conf$addSampler(target="gamma",type=truncGammaPoisSampler)
 
 conf$addSampler(target = c("D0","D.beta1"),
                 type = 'AF_slice',control=list(adaptive=TRUE),silent = TRUE)
