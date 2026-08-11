@@ -17,7 +17,7 @@ sim.JS.SMR.Dcov.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
                             K.mark=NA,K.sight=NA,K1D.mark=NA,K1D.sight=NA,
                             p0=NA,lam0=NA,sigma=NA,X.mark=NA,X.sight=NA,buff=buff,xlim=NA,
                             ylim=NA,res=NA,
-                            mark.year.pars=NA,mark.protocol=NA,
+                            mark.g.pars=NA,mark.protocol=NA,
                             n.tel.locs=NA,p.mark=NA){
   
   J.mark <- J.sight <- rep(NA,n.primary)
@@ -182,13 +182,13 @@ sim.JS.SMR.Dcov.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
       mark.g <- cap.g[which(deploy.g==1)]
       if(length(mark.g)>0){
         for(i in mark.g){
-          mark.life <- rtruncpois(1,lambda=mark.year.pars[1],lower=mark.year.pars[2],upper=mark.year.pars[3])
-          end.year <- min(g+mark.life-1,n.primary)
-          mark.states[i,g:end.year] <- 1
-          tel.z.states[i,g:end.year] <- 1
+          mark.life <- rtruncpois(1,lambda=mark.g.pars[1],lower=mark.g.pars[2],upper=mark.g.pars[3])
+          end.g <- min(g+mark.life-1,n.primary)
+          mark.states[i,g:end.g] <- 1
+          tel.z.states[i,g:end.g] <- 1
           if(mark.life>1&mark.protocol==1){ #if we don't replace marks on capture, make ineligible
             if(g<n.primary){
-              eligible.states[i,(g+1):end.year] <- 0
+              eligible.states[i,(g+1):end.g] <- 0
             }
           }
         }
@@ -263,10 +263,10 @@ sim.JS.SMR.Dcov.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
       n.locs.ind <- matrix(0,n.tel.inds,max.n.tel.sessions)
       tel.session <- matrix(NA,n.tel.inds,max.n.tel.sessions)
       for(i in 1:n.tel.inds){
-        collared.years <- which(tel.z.states[tel.ID[i],]==1)
-        tel.session[i,1:length(collared.years)] <- collared.years
-        for(gy in 1:length(collared.years)){
-          g <- collared.years[gy]
+        collared.gs <- which(tel.z.states[tel.ID[i],]==1)
+        tel.session[i,1:length(collared.gs)] <- collared.gs
+        for(gy in 1:length(collared.gs)){
+          g <- collared.gs[gy]
           locs[i,gy,1:n.tel.locs,1] <- rnorm(n.tel.locs,s[tel.ID[i],1],sigma[g])
           locs[i,gy,1:n.tel.locs,2] <- rnorm(n.tel.locs,s[tel.ID[i],2],sigma[g])
           n.locs.ind[i,gy] <- n.tel.locs

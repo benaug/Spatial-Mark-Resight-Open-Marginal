@@ -162,10 +162,10 @@ points(X.mark.all,pch=4,cex=1,lwd=2,col="darkred")
 #Mark/Telemetry settings - For now, we assume mark history is known and deaths observed if marked at time of death
 #this is a simplified scenario for using telemetry collars for marks
 n.tel.locs <- 15 #number of locs per individual
-mark.year.pars <- c(2,2,3) #parameters for truncated poisson: c(lambda, lower truncation, upper truncation)
+mark.g.pars <- c(2,2,3) #parameters for truncated poisson: c(lambda, lower truncation, upper truncation)
 #data simulator requires lower bound be 1 or higher. 1 means it fails before 2nd primary occasion
-#mark lifetime frequencies for mark.year.pars
-table(rtruncpois(10000,lambda=mark.year.pars[1],lower=mark.year.pars[2],upper=mark.year.pars[3]))/10000
+#mark lifetime frequencies for mark.g.pars
+table(rtruncpois(10000,lambda=mark.g.pars[1],lower=mark.g.pars[2],upper=mark.g.pars[3]))/10000
 #marking protocol: #1) never replace a mark if currently collared on capture 2) always replace
 mark.protocol <- 2 
 
@@ -178,7 +178,7 @@ data <- sim.JS.SMR.Dcov.mobileAC.Generalized.TrapRE(D.beta0=D.beta0,D.beta1=D.be
             sigma.move=sigma.move,rsf.beta=rsf.beta,
             K.mark=K.mark,K.sight=K.sight,
             X.mark=X.mark,X.sight=X.sight,xlim=xlim,ylim=ylim,res=res,
-            mark.year.pars=mark.year.pars,mark.protocol=mark.protocol,
+            mark.g.pars=mark.g.pars,mark.protocol=mark.protocol,
             p.mark=p.mark,n.tel.locs=n.tel.locs)
 
 #what is observed data? Note data objects have all n.primarys with all 0 data if no effort for a method
@@ -435,10 +435,10 @@ for(g in 1:n.primary){
 }
 
 #these indicate in which primary occasion marking/sighting occurs and how many total sessions of each
-mark.years <- which(K.mark!=0)
-sight.years <- which(K.sight!=0)
-n.mark.years <- length(mark.years)
-n.sight.years <- length(sight.years)
+mark.g <- which(K.mark!=0)
+sight.g <- which(K.sight!=0)
+n.mark.g <- length(mark.g)
+n.sight.g <- length(sight.g)
 
 #constants for Nimble
 #might want to center D.cov here. Simulated D.cov in this testscript is already effectively centered.
@@ -448,8 +448,8 @@ constants <- list(n.primary=n.primary,M=M,J.mark=J.mark,J.sight=J.sight,
                   n.marked.all=nimbuild$n.marked.all,
                   n.tel.sessions=data$n.tel.sessions,tel.session=data$tel.session,max.n.tel.locs=max.n.tel.locs,
                   tel.ID=data$tel.ID,n.tel.inds=data$n.tel.inds,n.locs.ind=data$n.locs.ind,
-                  mark.years=mark.years,sight.years=sight.years,n.mark.years=n.mark.years,
-                  n.sight.years=n.sight.years,n.cells=n.cells,n.cells.x=n.cells.x,
+                  mark.g=mark.g,sight.g=sight.g,n.mark.g=n.mark.g,
+                  n.sight.g=n.sight.g,n.cells=n.cells,n.cells.x=n.cells.x,
                   n.cells.y=n.cells.y,res=res,x.vals=x.vals,y.vals=y.vals,xlim=xlim,ylim=ylim,
                   cellArea=cellArea)
 #inits for Nimble
@@ -457,8 +457,8 @@ Niminits <- list(N=nimbuild$N,N.survive=nimbuild$N.survive,N.recruit=nimbuild$N.
                  ER=nimbuild$N.recruit,N.super=nimbuild$N.super,z.super=nimbuild$z.super,
                  z=nimbuild$z,z.start=nimbuild$z.start,z.stop=nimbuild$z.stop,
                  s=nimbuild$s,phi.fixed=0.5,D0=nimbuild$N[1]/(sum(InSS)*res^2),
-                 p0=inits$p0[mark.years],lam0=inits$lam0[sight.years],sigma.fixed=inits$sigma[1],
-                 theta.d.fixed=inits$theta.d[sight.years[1]],
+                 p0=inits$p0[mark.g],lam0=inits$lam0[sight.g],sigma.fixed=inits$sigma[1],
+                 theta.d.fixed=inits$theta.d[sight.g[1]],
                  sigma.move=inits$sigma.move,rsf.beta=inits$rsf.beta,D.beta1=inits$D.beta1)
 
 #data for Nimble
@@ -513,8 +513,8 @@ cells.double <- matrix(as.double(cells),n.cells.x,n.cells.y)
 conf$addSampler(target = c("z"),
                 type = 'zSampler',control = list(M=M,n.marked.all=n.marked.all,n.cap.all=n.cap.all,
                                                  n.primary=n.primary,J.mark=J.mark,J.sight=J.sight,
-                                                 mark.years=mark.years,sight.years=sight.years,
-                                                 n.mark.years=n.mark.years,n.sight.years=n.sight.years,
+                                                 mark.g=mark.g,sight.g=sight.g,
+                                                 n.mark.g=n.mark.g,n.sight.g=n.sight.g,
                                                  cells=cells.double,dSS=dSS,res=res,n.cells=n.cells,
                                                  xlim=xlim,ylim=ylim,x.vals=x.vals,y.vals=y.vals,
                                                  n.cells.x=n.cells.x,n.cells.y=n.cells.y,
