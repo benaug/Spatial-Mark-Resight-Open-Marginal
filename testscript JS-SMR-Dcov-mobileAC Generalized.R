@@ -3,7 +3,7 @@ library(coda)
 source("sim.JS.SMR.Dcov.mobileAC.Generalized.R")
 source("init.SMR.Dcov.mobileAC.Open.Generalized.R")
 source("Nimble Model JS-SMR-Dcov-mobileAC Generalized.R")
-source("Nimble Functions JS-SMR-Dcov-mobileAC Generalized.R") #contains custom distributions and updates
+source("Nimble Functions JS-SMR-Dcov-mobileAC Generalized V2.R") #contains custom distributions and updates
 source("sSampler Dcov mobileAC Open Marginal Generalized.R")
 source("mask.check.R")
 #must run this line 
@@ -480,7 +480,7 @@ conf <- configureMCMC(Rmodel,monitors=parameters,thin=nt,nodes=config.nodes)
 
 #add N/z sampler
 z.super.ups <- round(M*0.25) #how many z.super update proposals per iteration?
-#20% of M seems reasonable, but optimal will depend on data set
+#25% of M seems reasonable, but optimal will depend on data set
 y.mark.nodes <- Rmodel$expandNodeNames(paste0("y.mark[1:",M,",1:",n.primary,",1:",max(J.mark),"]"))
 pd.nodes <- Rmodel$expandNodeNames(paste0("pd[1:",M,",1:",n.primary,",1:",max(J.mark),"]"))
 lam.nodes <- Rmodel$expandNodeNames(paste0("lam[1:",M,",1:",n.primary,",1:",max(J.sight),"]"))
@@ -495,7 +495,7 @@ ER.nodes <- Rmodel$expandNodeNames(paste0("ER[1:",n.primary-1,"]"))
 s.nodes <- Rmodel$expandNodeNames(paste0("s"))
 z.nodes <- Rmodel$expandNodeNames(paste0("z[1:",M,",1]"))
 tel.z.states.nodes <- Rmodel$expandNodeNames(paste0("tel.z.states[1:",M,",1]"))
-calcNodes <- c(s.nodes,N.nodes,N.recruit.nodes,y.mark.nodes,y.um.nodes,y.unk.nodes,s.nodes,z.nodes,tel.z.states.nodes) #the ones that need likelihoods updated in mvSaved
+calcNodes <- c(s.nodes,N.nodes,N.recruit.nodes,y.mark.nodes,y.um.nodes,y.unk.nodes,z.nodes,tel.z.states.nodes) #the ones that need likelihoods updated in mvSaved
 #need to convert cells to double to use inside custom sampler
 cells.double <- matrix(as.double(cells),n.cells.x,n.cells.y)
 conf$addSampler(target = c("z"),

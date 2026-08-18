@@ -180,13 +180,13 @@ mark.protocol <- 2
 # simulate some data
 set.seed(390297) #change seed for new data set
 data <- sim.JS.SMR.Dcov.Generalized.Interspersed.TrapRE(D.beta0=D.beta0,D.beta1=D.beta1,D.cov=D.cov,
-            InSS=InSS,phi=phi,gamma=gamma,n.primary=n.primary,K.order=K.order,
-            theta.marked=theta.marked,theta.unmarked=theta.unmarked,
-            p0=p0,lam0=lam0,sigma=sigma,theta.d=theta.d,
-            K.mark=K.mark,K.sight=K.sight,
-            X.mark=X.mark,X.sight=X.sight,xlim=xlim,ylim=ylim,res=res,
-            mark.g.pars=mark.g.pars,mark.protocol=mark.protocol,
-            p.mark=p.mark,n.tel.locs=n.tel.locs)
+                                                        InSS=InSS,phi=phi,gamma=gamma,n.primary=n.primary,K.order=K.order,
+                                                        theta.marked=theta.marked,theta.unmarked=theta.unmarked,
+                                                        p0=p0,lam0=lam0,sigma=sigma,theta.d=theta.d,
+                                                        K.mark=K.mark,K.sight=K.sight,
+                                                        X.mark=X.mark,X.sight=X.sight,xlim=xlim,ylim=ylim,res=res,
+                                                        mark.g.pars=mark.g.pars,mark.protocol=mark.protocol,
+                                                        p.mark=p.mark,n.tel.locs=n.tel.locs)
 
 #what is observed data? Note data objects have all n.primarys with all 0 data if no effort for a method
 #Could be structured without primary occasions with no effort, but that would require more work changing custom
@@ -448,7 +448,6 @@ conf$addSampler(target = c("z"),
                                                  n.mark.g=n.mark.g,
                                                  n.sight.g=n.sight.g,
                                                  mark.states=nimbuild$mark.states,
-                                                 mark.states2D=nimbuild$mark.states2D,
                                                  tel.z.states=nimbuild$tel.z.states,
                                                  z.super.ups=z.super.ups,y2D=nimbuild$y2D,
                                                  y.mark.nodes=y.mark.nodes,pd.nodes=pd.nodes,

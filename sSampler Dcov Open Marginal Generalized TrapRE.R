@@ -13,6 +13,8 @@ sSamplerDcov <- nimbleFunction(
     n.marked.all <- control$n.marked.all
     n.primary <- control$n.primary
     mark.states <- control$mark.states
+    mark.states.all <- control$mark.states.all
+    M <- dim(mark.states.all)[1]
     ## control list extraction
     # logScale            <- extractControlElement(control, 'log',                 FALSE)
     # reflective          <- extractControlElement(control, 'reflective',          FALSE)
@@ -106,15 +108,37 @@ sSamplerDcov <- nimbleFunction(
           bigLam.unmarked.proposed <- bigLam.unmarked.initial
           for(g in 1:n.primary){
             if(model$z[i,g]==1){ #z.super always 1 here
-              bigLam.marked.proposed[g,1:J.sight[g]] <- bigLam.marked.proposed[g,1:J.sight[g]] - model$lam[i,g,1:J.sight[g]]*mark.states[g]
-              bigLam.unmarked.proposed[g,1:J.sight[g]] <- bigLam.unmarked.proposed[g,1:J.sight[g]] - model$lam[i,g,1:J.sight[g]]*(1-mark.states[g])
-              #make sure you didn't end up with any negative numbers due to machine precision
               for(j in 1:J.sight[g]){
-                if(bigLam.marked.proposed[g,j]<0){
-                  bigLam.marked.proposed[g,j] <- 0
-                }
-                if(bigLam.unmarked.proposed[g,j]<0){
-                  bigLam.unmarked.proposed[g,j] <- 0
+                if(mark.states[g]==1){
+                  bigLam.old <- bigLam.marked.proposed[g,j]
+                  bigLam.marked.proposed[g,j] <- bigLam.old-model$lam[i,g,j]
+                  #if subtraction nearly cancels the total, recompute the residual to avoid numerical loss
+                  if(bigLam.old>0&bigLam.marked.proposed[g,j]<=1e-12*bigLam.old){
+                    bigLam.marked.proposed[g,j] <- 0
+                    for(k in 1:n.marked.all){
+                      if(k!=i&mark.states.all[k,g]==1){
+                        bigLam.marked.proposed[g,j] <- bigLam.marked.proposed[g,j]+model$lam[k,g,j]
+                      }
+                    }
+                  }
+                  if(bigLam.marked.proposed[g,j]<0){
+                    bigLam.marked.proposed[g,j] <- 0
+                  }
+                }else{
+                  bigLam.old <- bigLam.unmarked.proposed[g,j]
+                  bigLam.unmarked.proposed[g,j] <- bigLam.old-model$lam[i,g,j]
+                  #if subtraction nearly cancels the total, recompute the residual to avoid numerical loss
+                  if(bigLam.old>0&bigLam.unmarked.proposed[g,j]<=1e-12*bigLam.old){
+                    bigLam.unmarked.proposed[g,j] <- 0
+                    for(k in 1:M){
+                      if(k!=i&mark.states.all[k,g]==0){
+                        bigLam.unmarked.proposed[g,j] <- bigLam.unmarked.proposed[g,j]+model$lam[k,g,j]
+                      }
+                    }
+                  }
+                  if(bigLam.unmarked.proposed[g,j]<0){
+                    bigLam.unmarked.proposed[g,j] <- 0
+                  }
                 }
               }
             }
@@ -154,9 +178,18 @@ sSamplerDcov <- nimbleFunction(
           bigLam.unmarked.proposed <- bigLam.unmarked.initial
           for(g in 1:n.primary){ #z.super always 1 here
             if(model$z[i,g]==1){
-              bigLam.unmarked.proposed[g,1:J.sight[g]] <- bigLam.unmarked.proposed[g,1:J.sight[g]] - model$lam[i,g,1:J.sight[g]]
-              #make sure you didn't end up with any negative numbers due to machine precision
               for(j in 1:J.sight[g]){
+                bigLam.old <- bigLam.unmarked.proposed[g,j]
+                bigLam.unmarked.proposed[g,j] <- bigLam.old-model$lam[i,g,j]
+                #if subtraction nearly cancels the total, recompute the residual to avoid numerical loss
+                if(bigLam.old>0&bigLam.unmarked.proposed[g,j]<=1e-12*bigLam.old){
+                  bigLam.unmarked.proposed[g,j] <- 0
+                  for(k in 1:M){
+                    if(k!=i&mark.states.all[k,g]==0){
+                      bigLam.unmarked.proposed[g,j] <- bigLam.unmarked.proposed[g,j]+model$lam[k,g,j]
+                    }
+                  }
+                }
                 if(bigLam.unmarked.proposed[g,j]<0){
                   bigLam.unmarked.proposed[g,j] <- 0
                 }

@@ -461,7 +461,7 @@ for(i in 1:M){
                   type = 'sSamplerDcov',control=list(i=i,res=res,n.cells.x=n.cells.x,n.cells.y=n.cells.y,
                                                      xlim=xlim,ylim=ylim,J.mark=J.mark,J.sight=J.sight,n.marked.all=nimbuild$n.marked.all,
                                                      n.primary=n.primary,loc.nodes=loc.nodes,
-                                                     mark.states=nimbuild$mark.states[i,]),
+                                                     mark.states=nimbuild$mark.states[i,],mark.states.all=nimbuild$mark.states),
                   silent = TRUE)
 }
 

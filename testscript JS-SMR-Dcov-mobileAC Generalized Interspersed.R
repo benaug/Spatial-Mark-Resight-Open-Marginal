@@ -494,43 +494,65 @@ conf <- configureMCMC(Rmodel,monitors=parameters,thin=nt,nodes=config.nodes)
 
 #add N/z sampler
 z.super.ups <- round(M*0.25) #how many z.super update proposals per iteration?
-#20% of M seems reasonable, but optimal will depend on data set
+#25% of M seems reasonable, but optimal will depend on data set
+
 y.mark.nodes <- Rmodel$expandNodeNames(paste0("y.mark[1:",M,",1:",n.primary,",1:",max(J.mark),"]"))
 pd.nodes <- Rmodel$expandNodeNames(paste0("pd[1:",M,",1:",n.primary,",1:",max(J.mark),"]"))
 lam.nodes <- Rmodel$expandNodeNames(paste0("lam[1:",M,",1:",n.primary,",1:",max(J.sight),"]"))
-y.um.nodes <- Rmodel$expandNodeNames(paste0("y.um[1:",n.primary,",1:",max(J.sight),",1:",max(K.sight),"]"))
-y.unk.nodes <- Rmodel$expandNodeNames(paste0("y.unk[1:",n.primary,",1:",max(J.sight),",1:",max(K.sight),"]"))
-lam.um.nodes <- Rmodel$expandNodeNames(paste0("lam.um[1:",n.primary,",1:",max(J.sight),",1:",max(K.sight),"]"))
-lam.unk.nodes <- Rmodel$expandNodeNames(paste0("lam.unk[1:",n.primary,",1:",max(J.sight),",1:",max(K.sight),"]"))
-N.nodes <- Rmodel$expandNodeNames(paste0("N"))
+
+# One vector node for each sighting occasion k; build explicitly so node order is
+# known for the partial z.start/z.stop likelihood recalculations.
+lam.um.nodes <- lam.unk.nodes <- y.um.nodes <- y.unk.nodes <- c()
+sight.node.start <- integer(n.sight.g)
+for(g2 in 1:n.sight.g){
+  gg <- sight.g[g2]
+  sight.node.start[g2] <- length(y.um.nodes)+1L
+  for(k in 1:K.sight[gg]){
+    y.um.tmp <- Rmodel$expandNodeNames(paste0("y.um[",gg,",1:",J.sight[gg],",",k,"]"))
+    y.unk.tmp <- Rmodel$expandNodeNames(paste0("y.unk[",gg,",1:",J.sight[gg],",",k,"]"))
+    lam.um.tmp <- Rmodel$expandNodeNames(paste0("lam.um[",gg,",1:",J.sight[gg],",",k,"]"))
+    lam.unk.tmp <- Rmodel$expandNodeNames(paste0("lam.unk[",gg,",1:",J.sight[gg],",",k,"]"))
+    if(length(y.um.tmp)!=1|length(y.unk.tmp)!=1|length(lam.um.tmp)!=1|length(lam.unk.tmp)!=1){
+      stop("Expected one vector node per sighting occasion for y.um, y.unk, lam.um, and lam.unk.")
+    }
+    y.um.nodes <- c(y.um.nodes,y.um.tmp)
+    y.unk.nodes <- c(y.unk.nodes,y.unk.tmp)
+    lam.um.nodes <- c(lam.um.nodes,lam.um.tmp)
+    lam.unk.nodes <- c(lam.unk.nodes,lam.unk.tmp)
+  }
+}
+
+N.nodes <- Rmodel$expandNodeNames("N")
 N.survive.nodes <- Rmodel$expandNodeNames(paste0("N.survive[1:",n.primary-1,"]"))
 N.recruit.nodes <- Rmodel$expandNodeNames(paste0("N.recruit[1:",n.primary-1,"]"))
 ER.nodes <- Rmodel$expandNodeNames(paste0("ER[1:",n.primary-1,"]"))
-s.nodes <- Rmodel$expandNodeNames(paste0("s"))
+s.nodes <- Rmodel$expandNodeNames("s")
 z.nodes <- Rmodel$expandNodeNames(paste0("z[1:",M,",1]"))
 tel.z.states.nodes <- Rmodel$expandNodeNames(paste0("tel.z.states[1:",M,",1]"))
-calcNodes <- c(s.nodes,N.nodes,N.recruit.nodes,y.mark.nodes,y.um.nodes,y.unk.nodes,s.nodes,z.nodes,tel.z.states.nodes) #the ones that need likelihoods updated in mvSaved
-#need to convert cells to double to use inside custom sampler
+calcNodes <- c(s.nodes,N.nodes,N.recruit.nodes,y.mark.nodes,y.um.nodes,y.unk.nodes,z.nodes,tel.z.states.nodes)
+
+# cells must be double inside compiled custom sampler
 cells.double <- matrix(as.double(cells),n.cells.x,n.cells.y)
-conf$addSampler(target = c("z"),
-                type = 'zSampler',control = list(M=M,n.marked.all=n.marked.all,n.cap.all=n.cap.all,
-                                                 n.primary=n.primary,J.mark=J.mark,J.sight=J.sight,K.sight=K.sight,
-                                                 mark.g=mark.g,sight.g=sight.g,
-                                                 n.mark.g=n.mark.g,n.sight.g=n.sight.g,
-                                                 cells=cells.double,dSS=dSS,res=res,n.cells=n.cells,
-                                                 xlim=xlim,ylim=ylim,x.vals=x.vals,y.vals=y.vals,
-                                                 n.cells.x=n.cells.x,n.cells.y=n.cells.y,
-                                                 mark.states=nimbuild$mark.states,mark.states2D=nimbuild$mark.states2D,
-                                                 tel.z.states=nimbuild$tel.z.states,
-                                                 z.super.ups=z.super.ups,y2D=nimbuild$y2D,
-                                                 y.mark.nodes=y.mark.nodes,pd.nodes=pd.nodes,
-                                                 y.um.nodes=y.um.nodes,y.unk.nodes=y.unk.nodes,
-                                                 lam.nodes=lam.nodes,tel.z.states.nodes=tel.z.states.nodes,
-                                                 lam.um.nodes=lam.um.nodes,lam.unk.nodes=lam.unk.nodes,
-                                                 N.nodes=N.nodes,z.nodes=z.nodes,ER.nodes=ER.nodes,
-                                                 N.survive.nodes=N.survive.nodes,
-                                                 N.recruit.nodes=N.recruit.nodes,s.nodes=s.nodes,
-                                                 calcNodes=calcNodes), silent = TRUE)
+
+conf$addSampler(target=c("z"),
+                type='zSampler',
+                control=list(M=M,n.marked.all=n.marked.all,n.cap.all=n.cap.all,
+                             n.primary=n.primary,J.mark=J.mark,J.sight=J.sight,K.sight=K.sight,
+                             mark.g=mark.g,sight.g=sight.g,n.mark.g=n.mark.g,n.sight.g=n.sight.g,
+                             xlim=xlim,ylim=ylim,x.vals=x.vals,y.vals=y.vals,
+                             cells=cells.double,dSS=dSS,n.cells=n.cells,
+                             n.cells.x=n.cells.x,n.cells.y=n.cells.y,res=res,
+                             mark.states=nimbuild$mark.states,
+                             tel.z.states=nimbuild$tel.z.states,
+                             z.super.ups=z.super.ups,y2D=nimbuild$y2D,
+                             y.mark.nodes=y.mark.nodes,pd.nodes=pd.nodes,
+                             y.um.nodes=y.um.nodes,y.unk.nodes=y.unk.nodes,
+                             lam.nodes=lam.nodes,tel.z.states.nodes=tel.z.states.nodes,
+                             lam.um.nodes=lam.um.nodes,lam.unk.nodes=lam.unk.nodes,
+                             sight.node.start=sight.node.start,
+                             N.nodes=N.nodes,z.nodes=z.nodes,ER.nodes=ER.nodes,
+                             N.survive.nodes=N.survive.nodes,N.recruit.nodes=N.recruit.nodes,
+                             s.nodes=s.nodes,calcNodes=calcNodes),silent=TRUE)
 
 
 #activity center samplers. There are 2 samplers here for these cases

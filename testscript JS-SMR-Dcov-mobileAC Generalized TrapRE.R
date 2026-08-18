@@ -172,14 +172,14 @@ mark.protocol <- 2
 # simulate some data
 set.seed(390297) #change seed for new data set
 data <- sim.JS.SMR.Dcov.mobileAC.Generalized.TrapRE(D.beta0=D.beta0,D.beta1=D.beta1,D.cov=D.cov,
-            InSS=InSS,phi=phi,gamma=gamma,n.primary=n.primary,
-            theta.marked=theta.marked,theta.unmarked=theta.unmarked,
-            p0=p0,lam0=lam0,sigma=sigma,theta.d=theta.d,
-            sigma.move=sigma.move,rsf.beta=rsf.beta,
-            K.mark=K.mark,K.sight=K.sight,
-            X.mark=X.mark,X.sight=X.sight,xlim=xlim,ylim=ylim,res=res,
-            mark.g.pars=mark.g.pars,mark.protocol=mark.protocol,
-            p.mark=p.mark,n.tel.locs=n.tel.locs)
+                                                    InSS=InSS,phi=phi,gamma=gamma,n.primary=n.primary,
+                                                    theta.marked=theta.marked,theta.unmarked=theta.unmarked,
+                                                    p0=p0,lam0=lam0,sigma=sigma,theta.d=theta.d,
+                                                    sigma.move=sigma.move,rsf.beta=rsf.beta,
+                                                    K.mark=K.mark,K.sight=K.sight,
+                                                    X.mark=X.mark,X.sight=X.sight,xlim=xlim,ylim=ylim,res=res,
+                                                    mark.g.pars=mark.g.pars,mark.protocol=mark.protocol,
+                                                    p.mark=p.mark,n.tel.locs=n.tel.locs)
 
 #what is observed data? Note data objects have all n.primarys with all 0 data if no effort for a method
 #Could be structured without primary occasions with no effort, but that would require more work changing custom
@@ -490,7 +490,7 @@ conf <- configureMCMC(Rmodel,monitors=parameters,thin=nt,nodes=config.nodes)
 
 #add N/z sampler
 z.super.ups <- round(M*0.25) #how many z.super update proposals per iteration?
-#20% of M seems reasonable, but optimal will depend on data set
+#25% of M seems reasonable, but optimal will depend on data set
 y.mark.nodes <- Rmodel$expandNodeNames(paste0("y.mark[1:",M,",1:",n.primary,",1:",max(J.mark),"]"))
 pd.nodes <- Rmodel$expandNodeNames(paste0("pd[1:",M,",1:",n.primary,",1:",max(J.mark),"]"))
 lam.nodes <- Rmodel$expandNodeNames(paste0("lam[1:",M,",1:",n.primary,",1:",max(J.sight),"]"))
@@ -507,7 +507,7 @@ s.nodes <- Rmodel$expandNodeNames(paste0("s"))
 z.nodes <- Rmodel$expandNodeNames(paste0("z[1:",M,",1]"))
 tel.z.states.nodes <- Rmodel$expandNodeNames(paste0("tel.z.states[1:",M,",1]"))
 calcNodes <- c(s.nodes,N.nodes,N.recruit.nodes,y.mark.nodes,y.um.nodes,y.unk.nodes,
-               trap.RE.nodes,s.nodes,z.nodes,tel.z.states.nodes) #the ones that need likelihoods updated in mvSaved
+               trap.RE.nodes,z.nodes,tel.z.states.nodes) #the ones that need likelihoods updated in mvSaved
 #need to convert cells to double to use inside custom sampler
 cells.double <- matrix(as.double(cells),n.cells.x,n.cells.y)
 conf$addSampler(target = c("z"),

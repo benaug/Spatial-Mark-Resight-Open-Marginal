@@ -177,12 +177,12 @@ mark.protocol <- 2
 # simulate some data
 set.seed(390297) #change seed for new data set
 data <- sim.JS.SMR.Dcov.Generalized.Interspersed(D.beta0=D.beta0,D.beta1=D.beta1,D.cov=D.cov,
-            InSS=InSS,phi=phi,gamma=gamma,n.primary=n.primary,K.order=K.order,
-            theta.marked=theta.marked,theta.unmarked=theta.unmarked,
-            p0=p0,lam0=lam0,sigma=sigma,K.mark=K.mark,K.sight=K.sight,
-            X.mark=X.mark,X.sight=X.sight,xlim=xlim,ylim=ylim,res=res,
-            mark.g.pars=mark.g.pars,mark.protocol=mark.protocol,
-            p.mark=p.mark,n.tel.locs=n.tel.locs)
+                                                 InSS=InSS,phi=phi,gamma=gamma,n.primary=n.primary,K.order=K.order,
+                                                 theta.marked=theta.marked,theta.unmarked=theta.unmarked,
+                                                 p0=p0,lam0=lam0,sigma=sigma,K.mark=K.mark,K.sight=K.sight,
+                                                 X.mark=X.mark,X.sight=X.sight,xlim=xlim,ylim=ylim,res=res,
+                                                 mark.g.pars=mark.g.pars,mark.protocol=mark.protocol,
+                                                 p.mark=p.mark,n.tel.locs=n.tel.locs)
 
 #what is observed data? Note data objects have all n.primarys with all 0 data if no effort for a method
 #Could be structured without primary occasions with no effort, but that would require more work changing custom
@@ -416,10 +416,27 @@ z.super.ups <- round(M*0.25) #how many z.super update proposals per iteration?
 y.mark.nodes <- Rmodel$expandNodeNames(paste0("y.mark[1:",M,",1:",n.primary,",1:",max(J.mark),"]"))
 pd.nodes <- Rmodel$expandNodeNames(paste0("pd[1:",M,",1:",n.primary,",1:",max(J.mark),"]"))
 lam.nodes <- Rmodel$expandNodeNames(paste0("lam[1:",M,",1:",n.primary,",1:",max(J.sight),"]"))
-lam.um.nodes <- Rmodel$expandNodeNames(paste0("lam.um[1:",n.primary,",1:",max(J.sight),",1:",max(K.sight),"]"))
-lam.unk.nodes <- Rmodel$expandNodeNames(paste0("lam.unk[1:",n.primary,",1:",max(J.sight),",1:",max(K.sight),"]"))
-y.um.nodes <- Rmodel$expandNodeNames(paste0("y.um[1:",n.primary,",1:",max(J.sight),",1:",max(K.sight),"]"))
-y.unk.nodes <- Rmodel$expandNodeNames(paste0("y.unk[1:",n.primary,",1:",max(J.sight),",1:",max(K.sight),"]"))
+#one vector node for each sighting occasion k; build explicitly so node order is
+#known for the partial z.start/z.stop likelihood recalculations
+lam.um.nodes <- lam.unk.nodes <- y.um.nodes <- y.unk.nodes <- c()
+sight.node.start <- integer(n.sight.g)
+for(g2 in 1:n.sight.g){
+  gg <- sight.g[g2]
+  sight.node.start[g2] <- length(y.um.nodes)+1L
+  for(k in 1:K.sight[gg]){
+    y.um.tmp <- Rmodel$expandNodeNames(paste0("y.um[",gg,",1:",J.sight[gg],",",k,"]"))
+    y.unk.tmp <- Rmodel$expandNodeNames(paste0("y.unk[",gg,",1:",J.sight[gg],",",k,"]"))
+    lam.um.tmp <- Rmodel$expandNodeNames(paste0("lam.um[",gg,",1:",J.sight[gg],",",k,"]"))
+    lam.unk.tmp <- Rmodel$expandNodeNames(paste0("lam.unk[",gg,",1:",J.sight[gg],",",k,"]"))
+    if(length(y.um.tmp)!=1|length(y.unk.tmp)!=1|length(lam.um.tmp)!=1|length(lam.unk.tmp)!=1){
+      stop("Expected one vector node per sighting occasion for y.um, y.unk, lam.um, and lam.unk.")
+    }
+    y.um.nodes <- c(y.um.nodes,y.um.tmp)
+    y.unk.nodes <- c(y.unk.nodes,y.unk.tmp)
+    lam.um.nodes <- c(lam.um.nodes,lam.um.tmp)
+    lam.unk.nodes <- c(lam.unk.nodes,lam.unk.tmp)
+  }
+}
 
 N.nodes <- Rmodel$expandNodeNames(paste0("N"))
 N.survive.nodes <- Rmodel$expandNodeNames(paste0("N.survive[1:",n.primary-1,"]"))
@@ -436,13 +453,13 @@ conf$addSampler(target = c("z"),
                                                  n.mark.g=n.mark.g,
                                                  n.sight.g=n.sight.g,
                                                  mark.states=nimbuild$mark.states,
-                                                 mark.states2D=nimbuild$mark.states2D,
                                                  tel.z.states=nimbuild$tel.z.states,
                                                  z.super.ups=z.super.ups,y2D=nimbuild$y2D,
                                                  y.mark.nodes=y.mark.nodes,pd.nodes=pd.nodes,
                                                  y.um.nodes=y.um.nodes,y.unk.nodes=y.unk.nodes,
                                                  lam.nodes=lam.nodes,tel.z.states.nodes=tel.z.states.nodes,
                                                  lam.um.nodes=lam.um.nodes,lam.unk.nodes=lam.unk.nodes,
+                                                 sight.node.start=sight.node.start,
                                                  N.nodes=N.nodes,z.nodes=z.nodes,ER.nodes=ER.nodes,
                                                  N.survive.nodes=N.survive.nodes,
                                                  N.recruit.nodes=N.recruit.nodes,
@@ -535,3 +552,4 @@ mtext("marks deployed",3,at=0,line=1)
 mtext(marks.deployed,3,at=1:n.primary,line=1)
 mtext("marks active",3,at=0,line=0)
 mtext(marks.active,3,at=1:n.primary,line=0)
+
