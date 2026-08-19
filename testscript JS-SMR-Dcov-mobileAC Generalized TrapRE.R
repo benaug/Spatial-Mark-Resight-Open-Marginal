@@ -47,16 +47,17 @@ X.sight[[4]] <- as.matrix(expand.grid(1:10,1:10))
 X.sight[[5]] <- as.matrix(expand.grid(1:10,1:10))
 X.sight[[6]] <- as.matrix(expand.grid(1:10,1:10))
 
-#Let's spread the marking traps out across the study area by randomly selecting from the 
-# sighting traps. For movement, this is probably better than only allowing marked and thus identifiable
-#individuals in a central subregion of the state space only, like other data simulators in this repo are set up for
+#Let's spread the marking traps out across the study area by randomly selecting from a 10 x 10 grid.
+#For movement, this is probably better than only allowing marked and thus identifiable individuals
+#in a central subregion of the state space only, like other data simulators in this repo are set up for
 X.mark <- vector("list",n.primary)
-X.mark[[1]] <- X.sight[[1]][sort(sample(1:nrow(X.sight[[1]]),36)),]
-X.mark[[2]] <- X.sight[[2]][sort(sample(1:nrow(X.sight[[2]]),36)),]
-X.mark[[3]] <- X.sight[[3]][sort(sample(1:nrow(X.sight[[3]]),36)),]
-X.mark[[4]] <- X.sight[[4]][sort(sample(1:nrow(X.sight[[4]]),36)),]
-X.mark[[5]] <- X.sight[[5]][sort(sample(1:nrow(X.sight[[5]]),36)),]
-X.mark[[6]] <- X.sight[[6]][sort(sample(1:nrow(X.sight[[6]]),36)),]
+X.mark.grid <- as.matrix(expand.grid(1:10,1:10))
+X.mark[[1]] <- X.mark.grid[sort(sample(1:nrow(X.mark.grid),36)),]
+X.mark[[2]] <- X.mark.grid[sort(sample(1:nrow(X.mark.grid),36)),]
+X.mark[[3]] <- X.mark.grid[sort(sample(1:nrow(X.mark.grid),36)),]
+X.mark[[4]] <- X.mark.grid[sort(sample(1:nrow(X.mark.grid),36)),]
+X.mark[[5]] <- X.mark.grid[sort(sample(1:nrow(X.mark.grid),36)),]
+X.mark[[6]] <- X.mark.grid[sort(sample(1:nrow(X.mark.grid),36)),]
 
 #Check for consistency between traps and occasions
 for(g in 1:n.primary){
@@ -87,11 +88,13 @@ buff <- 3 #state space buffer around traps
 X.both <- vector("list",n.primary)
 for(g in 1:n.primary){
   X.both[[g]] <- rbind(X.mark[[g]],X.sight[[g]])
-  xlim[g,] <- range(X.both[[g]][,1]) + c(-buff,buff)
-  ylim[g,] <- range(X.both[[g]][,2]) + c(-buff,buff)
+  if(nrow(X.both[[g]])>0){
+    xlim[g,] <- range(X.both[[g]][,1]) + c(-buff,buff)
+    ylim[g,] <- range(X.both[[g]][,2]) + c(-buff,buff)
+  }
 }
-xlim <- c(min(xlim[,1]),max(xlim[,2]))
-ylim <- c(min(ylim[,1]),max(ylim[,2]))
+xlim <- c(min(xlim[,1],na.rm=TRUE),max(xlim[,2],na.rm=TRUE))
+ylim <- c(min(ylim[,1],na.rm=TRUE),max(ylim[,2],na.rm=TRUE))
 
 #shift X, xlim, ylim, so lower left side of state space is (0,0)
 #this is required to use efficient look-up table to find the cell number

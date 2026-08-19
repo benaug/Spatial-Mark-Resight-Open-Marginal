@@ -4,7 +4,7 @@ source("sim.JS.SMR.Dcov.Generalized.TrapRE.R")
 source("init.SMR.Dcov.Open.Generalized.TrapRE.R")
 source("Nimble Model JS-SMR-Dcov Generalized TrapRE.R")
 source("Nimble Functions JS-SMR-Dcov Generalized TrapRE.R") #contains custom distributions and updates
-source("sSampler Dcov Open Marginal Generalized TraPRE.R") # activity center sampler that proposes from prior when z.super=0.
+source("sSampler Dcov Open Marginal Generalized TrapRE.R") # activity center sampler that proposes from prior when z.super=0.
 source("mask.check.R")
 #must run this line 
 nimbleOptions(determinePredictiveNodesInModel = FALSE)
@@ -82,11 +82,13 @@ buff <- 2 #state space buffer around traps
 X.both <- vector("list",n.primary)
 for(g in 1:n.primary){
   X.both[[g]] <- rbind(X.mark[[g]],X.sight[[g]])
-  xlim[g,] <- range(X.both[[g]][,1]) + c(-buff,buff)
-  ylim[g,] <- range(X.both[[g]][,2]) + c(-buff,buff)
+  if(nrow(X.both[[g]])>0){
+    xlim[g,] <- range(X.both[[g]][,1]) + c(-buff,buff)
+    ylim[g,] <- range(X.both[[g]][,2]) + c(-buff,buff)
+  }
 }
-xlim <- c(min(xlim[,1]),max(xlim[,2]))
-ylim <- c(min(ylim[,1]),max(ylim[,2]))
+xlim <- c(min(xlim[,1],na.rm=TRUE),max(xlim[,2],na.rm=TRUE))
+ylim <- c(min(ylim[,1],na.rm=TRUE),max(ylim[,2],na.rm=TRUE))
 
 #shift X, xlim, ylim, so lower left side of state space is (0,0)
 #this is required to use efficient look-up table to find the cell number
@@ -167,13 +169,13 @@ mark.protocol <- 2
 # simulate some data
 set.seed(390297) #change seed for new data set
 data <- sim.JS.SMR.Dcov.Generalized.TrapRE(D.beta0=D.beta0,D.beta1=D.beta1,D.cov=D.cov,
-            InSS=InSS,phi=phi,gamma=gamma,n.primary=n.primary,
-            theta.marked=theta.marked,theta.unmarked=theta.unmarked,
-            p0=p0,lam0=lam0,sigma=sigma,theta.d=theta.d,
-            K.mark=K.mark,K.sight=K.sight,
-            X.mark=X.mark,X.sight=X.sight,xlim=xlim,ylim=ylim,res=res,
-            mark.g.pars=mark.g.pars,mark.protocol=mark.protocol,
-            p.mark=p.mark,n.tel.locs=n.tel.locs)
+                                           InSS=InSS,phi=phi,gamma=gamma,n.primary=n.primary,
+                                           theta.marked=theta.marked,theta.unmarked=theta.unmarked,
+                                           p0=p0,lam0=lam0,sigma=sigma,theta.d=theta.d,
+                                           K.mark=K.mark,K.sight=K.sight,
+                                           X.mark=X.mark,X.sight=X.sight,xlim=xlim,ylim=ylim,res=res,
+                                           mark.g.pars=mark.g.pars,mark.protocol=mark.protocol,
+                                           p.mark=p.mark,n.tel.locs=n.tel.locs)
 
 #what is observed data? Note data objects have all n.primarys with all 0 data if no effort for a method
 #Could be structured without primary occasions with no effort, but that would require more work changing custom
@@ -333,26 +335,28 @@ for(g in 1:n.primary){
   points(data$X.sight[[g]],pch=4,lwd=2)
   points(data$X.mark[[g]],pch=4,lwd=2,col="darkred")
   points(nimbuild$s[nimbuild$z[,g]==1,1],nimbuild$s[nimbuild$z[,g]==1,2],pch=16) #initialized activity centers
-  for(i in 1:n.marked[g]){
-    id <- nimbuild$ID.marked[i,g]
-    traps <- matrix(numeric(0),nrow=0,ncol=2)
-    if(J.sight[g]>0){
-      trapcaps <- which(nimbuild$y.mID[id,g,1:J.sight[g]]>0)
-      if(length(trapcaps)>0){
-        traps <- rbind(traps,nimbuild$X.sight[g,trapcaps,1:2])
+  if(n.marked[g]>0){
+    for(i in 1:n.marked[g]){
+      id <- nimbuild$ID.marked[i,g]
+      traps <- matrix(numeric(0),nrow=0,ncol=2)
+      if(J.sight[g]>0){
+        trapcaps <- which(nimbuild$y.mID[id,g,1:J.sight[g]]>0)
+        if(length(trapcaps)>0){
+          traps <- rbind(traps,nimbuild$X.sight[g,trapcaps,1:2])
+        }
       }
-    }
-    if(J.mark[g]>0){
-      trapcaps2 <- which(nimbuild$y.mark[id,g,1:J.mark[g]]>0)
-      if(length(trapcaps2)>0){
-        traps <- rbind(traps,nimbuild$X.mark[g,trapcaps2,1:2])
+      if(J.mark[g]>0){
+        trapcaps2 <- which(nimbuild$y.mark[id,g,1:J.mark[g]]>0)
+        if(length(trapcaps2)>0){
+          traps <- rbind(traps,nimbuild$X.mark[g,trapcaps2,1:2])
+        }
       }
-    }
-    s <- nimbuild$s[nimbuild$ID.marked[i,g],]
-    points(s[1],s[2],col="goldenrod",pch=16)
-    if(nrow(traps)>0){
-      for(j in 1:nrow(traps)){
-        lines(x=c(s[1],traps[j,1]),y=c(s[2],traps[j,2]),col="goldenrod")
+      s <- nimbuild$s[nimbuild$ID.marked[i,g],]
+      points(s[1],s[2],col="goldenrod",pch=16)
+      if(nrow(traps)>0){
+        for(j in 1:nrow(traps)){
+          lines(x=c(s[1],traps[j,1]),y=c(s[2],traps[j,2]),col="goldenrod")
+        }
       }
     }
   }
@@ -460,7 +464,7 @@ for(i in 1:M){
   conf$addSampler(target = paste("s[",i,", 1:2]", sep=""),
                   type = 'sSamplerDcov',control=list(i=i,res=res,n.cells.x=n.cells.x,n.cells.y=n.cells.y,
                                                      xlim=xlim,ylim=ylim,J.mark=J.mark,J.sight=J.sight,n.marked.all=nimbuild$n.marked.all,
-                                                     n.primary=n.primary,loc.nodes=loc.nodes,
+                                                     n.primary=n.primary,sight.g=sight.g,n.sight.g=n.sight.g,loc.nodes=loc.nodes,
                                                      mark.states=nimbuild$mark.states[i,],mark.states.all=nimbuild$mark.states),
                   silent = TRUE)
 }

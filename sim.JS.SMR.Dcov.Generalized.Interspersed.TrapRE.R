@@ -12,32 +12,36 @@ rtruncpois <- function(n,lambda,lower=0,upper=Inf){
 }
 
 sim.JS.SMR.Dcov.Generalized.Interspersed.TrapRE <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
-                            phi=NA,gamma=NA,n.primary=NA,K.order=NA,
-                            theta.marked=NA,theta.unmarked=NA,
-                            K.mark=NA,K.sight=NA,K1D.mark=NA,K2D.sight=NA,
-                            p0=NA,lam0=NA,sigma=NA,theta.d=NA,
-                            X.mark=NA,X.sight=NA,buff=buff,xlim=NA,
-                            ylim=NA,res=NA,
-                            mark.g.pars=NA,mark.protocol=NA,
-                            n.tel.locs=NA,p.mark=NA){
+                                                            phi=NA,gamma=NA,n.primary=NA,K.order=NA,
+                                                            theta.marked=NA,theta.unmarked=NA,
+                                                            K.mark=NA,K.sight=NA,K1D.mark=NA,K2D.sight=NA,
+                                                            p0=NA,lam0=NA,sigma=NA,theta.d=NA,
+                                                            X.mark=NA,X.sight=NA,buff=buff,xlim=NA,
+                                                            ylim=NA,res=NA,
+                                                            mark.g.pars=NA,mark.protocol=NA,
+                                                            n.tel.locs=NA,p.mark=NA){
   #check K.order
-  if(is.na(K.order[1])){
-    stop("Must supply K.order")
-  }
-  if(length(K.order)!=n.primary)stop("K.order must be of length N.session")
-  if(!all(c("M","S")%in%names(table(unlist(K.order))))|!all(names(table(unlist(K.order)))%in%c("M","S"))){
-    stop("K.order must only contain characters 'M'and 'S' indicating marking and sighting sessions")
-  }
+  #For any primary occasion with effort, K.order gives the complete ordering of M and S occasions.
+  #For a primary occasion with no marking or sighting effort, use scalar NA.
+  if(length(K.order)!=n.primary)stop("K.order must be of length n.primary")
+  if(sum(K.mark)==0)stop("At least one marking primary occasion is required.")
+  if(sum(K.sight)==0)stop("At least one sighting primary occasion is required.")
   for(g in 1:n.primary){
-    if(K.sight[g]>0){
-      if(length(K.order[[g]])!=sum(K.mark[g],K.sight[g])){
+    K.total.g <- K.mark[g]+K.sight[g]
+    if(K.total.g>0){
+      if(length(K.order[[g]])!=K.total.g){
         stop(paste("K.order is not the right size in session",g))
+      }
+      if(any(is.na(K.order[[g]]))|any(!K.order[[g]]%in%c("M","S"))){
+        stop(paste("K.order may contain only 'M' and 'S' in session",g))
       }
       if((sum(K.order[[g]]=="M")!=K.mark[g])|(sum(K.order[[g]]=="S")!=K.sight[g])){
         stop(paste("Fix number of M and S in K.order to match K.mark and K.sight in session",g))
       }
     }else{
-      if(!all(is.na(K.order[[g]])))stop("If K.sight[g]=0, K.order[[g]] must be scalar NA")
+      if(length(K.order[[g]])!=1|!is.na(K.order[[g]])){
+        stop(paste("If K.mark[g]=0 and K.sight[g]=0, K.order[[g]] must be scalar NA in session",g))
+      }
     }
   }
   
@@ -47,6 +51,12 @@ sim.JS.SMR.Dcov.Generalized.Interspersed.TrapRE <- function(D.beta0=NA,D.beta1=N
     X.sight[[g]] <- as.matrix(X.sight[[g]])
     J.mark[g] <- nrow(X.mark[[g]])
     J.sight[g] <- nrow(X.sight[[g]])
+    if((K.mark[g]==0)!=(J.mark[g]==0)){
+      stop(paste("X.mark and K.mark inconsistent in session",g))
+    }
+    if((K.sight[g]==0)!=(J.sight[g]==0)){
+      stop(paste("X.sight and K.sight inconsistent in session",g))
+    }
   }
   
   #trap operation - marking process
@@ -111,7 +121,7 @@ sim.JS.SMR.Dcov.Generalized.Interspersed.TrapRE <- function(D.beta0=NA,D.beta1=N
   lambda.cell <- InSS*exp(D.beta0 + D.beta1*D.cov)*cellArea
   lambda.y1 <- sum(lambda.cell)
   N[1] <- rpois(1,lambda.y1)
-
+  
   #recreate some Dcov things so we can pass fewer arguments into this function
   x.vals <- seq(xlim[1]+res/2,xlim[2]-res/2,res) #x cell centroids
   y.vals <- seq(ylim[1]+res/2,ylim[2]-res/2,res) #y cell centroids
@@ -120,7 +130,7 @@ sim.JS.SMR.Dcov.Generalized.Interspersed.TrapRE <- function(D.beta0=NA,D.beta1=N
   n.cells <- nrow(dSS)
   n.cells.x <- length(x.vals)
   n.cells.y <- length(y.vals)
-
+  
   #Easiest to increase dimension of z as we simulate bc size not known in advance.
   z <- matrix(0,N[1],n.primary)
   z[1:N[1],1] <- 1
@@ -140,10 +150,10 @@ sim.JS.SMR.Dcov.Generalized.Interspersed.TrapRE <- function(D.beta0=NA,D.beta1=N
     N.survive[g-1] <- sum(z[,g-1]==1&z[,g]==1)
     N[g] <- N.recruit[g-1]+N.survive[g-1]
   }
-
+  
   if(any(N.recruit+N.survive!=N[2:n.primary]))stop("Simulation bug")
   if(any(colSums(z)!=N))stop("Simulation bug")
-
+  
   z.start <- apply(z,1,function(x){which(x==1)[1]})
   z.stop <- n.primary-apply(z,1,function(x){which(rev(x)==1)[1]})+1
   
@@ -153,7 +163,7 @@ sim.JS.SMR.Dcov.Generalized.Interspersed.TrapRE <- function(D.beta0=NA,D.beta1=N
   K.mark.max <- max(K.mark)
   J.sight.max <- max(J.sight)
   K.sight.max <- max(K.sight)
-
+  
   #simulate activity centers - fixed through time
   N.super <- nrow(z)
   # simulate a population of activity centers
@@ -210,13 +220,13 @@ sim.JS.SMR.Dcov.Generalized.Interspersed.TrapRE <- function(D.beta0=NA,D.beta1=N
       }
     }
   }
-
+  
   if(sum(y.mark)==0)stop("No individuals captured. Reconsider parameter settings.")
   if(sum(y)==0)stop("No individuals resighted. Reconsider parameter settings.")
-
+  
   #store true data for debugging
   truth <- list(y.mark=y.mark,y=y,N=N,N.recruit=N.recruit,N.survive=N.survive,z=z,s=s,trap.effect=trap.effect)
-
+  
   #mark/telemetry data
   #deploy collars to individuals captured in marking process
   mark.caps <- 1*apply(y.mark,c(1,2),sum)
@@ -285,7 +295,7 @@ sim.JS.SMR.Dcov.Generalized.Interspersed.TrapRE <- function(D.beta0=NA,D.beta1=N
   mark.states <- array(0,dim=c(N.super,n.primary,K.sight.max))
   for(i in 1:N.super){
     for(g in 1:n.primary){
-      if(z[i,g]==1&mark.states2D[i,g]==1&!is.na(mark.start.global[i,g])){
+      if(K.sight[g]>0&z[i,g]==1&mark.states2D[i,g]==1&!is.na(mark.start.global[i,g])){
         for(k in 1:K.sight[g]){
           if(mark.start.global[i,g]==0||sightocc[[g]][k]>mark.start.global[i,g]){
             mark.states[i,g,k] <- 1
@@ -324,7 +334,8 @@ sim.JS.SMR.Dcov.Generalized.Interspersed.TrapRE <- function(D.beta0=NA,D.beta1=N
   
   for(g in 1:n.primary){
     if(K.sight[g]>0){
-      idx <- which(y[,g,,]>0,arr.ind=TRUE)
+      y.g <- array(y[,g,1:J.sight[g],1:K.sight[g]],dim=c(N.super,J.sight[g],K.sight[g]))
+      idx <- which(y.g>0,arr.ind=TRUE)
       if(nrow(idx)>0){
         for(l in 1:nrow(idx)){
           i <- idx[l,1]
@@ -457,3 +468,4 @@ sim.JS.SMR.Dcov.Generalized.Interspersed.TrapRE <- function(D.beta0=NA,D.beta1=N
               D.cov=D.cov,InSS=InSS,res=res,cellArea=cellArea,N=N,lambda.y1=lambda.y1,
               truth=truth))
 }
+

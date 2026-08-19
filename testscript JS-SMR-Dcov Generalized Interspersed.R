@@ -22,7 +22,7 @@ sigma <- rep(0.5,n.primary) #detection function scale by primary occasion
 p.mark <- rep(0.75,n.primary) #probability of marking given captured in marking process by primary occasion
 #Number of occasions per primary occasion per method
 #to skip sampling by a method in a primary occasion, set its K=0
-K.mark <- c(8,0,0,8,0,0) #marking occasions by primary occasion
+K.mark <- c(8,0,0,8,0,0) #both, sight-only, mark-only, both, sight-only, neither
 K.sight <- c(5,5,5,5,5,5) #resighting occasions by primary occasion
 if(length(K.mark)!=length(K.sight))stop("K.mark and K.sight must be same length")
 if(length(K.mark)!=n.primary)stop("K.mark and K.sight must be of length n.primary")
@@ -75,7 +75,8 @@ for(g in 1:n.primary){
 #For each primary session, a character vector of length K.mark[g] + K.sight[g] specifying the order of the marking
 #and sighting occasions. Vector elements are either "M" or "S" arranged in the order the marking
 #and sighting occasions occurred. There must be K.mark[g] M's and K.sight[g] S's. 
-#Set K.order[[g]] <- NA if no sighting effort in primary occasion g
+#Set K.order[[g]] <- NA only if there is no marking or sighting effort in primary occasion g.
+#For marking-only primary occasions, use rep("M",K.mark[g]); for sighting-only occasions, use rep("S",K.sight[g]).
 #Data simulator will check these requirements.
 K.order <- vector("list",n.primary)
 K.order[[1]] <- c("M","M","M","M","M","S","S","S","M","M","M","S","S")
@@ -92,11 +93,13 @@ buff <- 2 #state space buffer around traps
 X.both <- vector("list",n.primary)
 for(g in 1:n.primary){
   X.both[[g]] <- rbind(X.mark[[g]],X.sight[[g]])
-  xlim[g,] <- range(X.both[[g]][,1]) + c(-buff,buff)
-  ylim[g,] <- range(X.both[[g]][,2]) + c(-buff,buff)
+  if(nrow(X.both[[g]])>0){
+    xlim[g,] <- range(X.both[[g]][,1]) + c(-buff,buff)
+    ylim[g,] <- range(X.both[[g]][,2]) + c(-buff,buff)
+  }
 }
-xlim <- c(min(xlim[,1]),max(xlim[,2]))
-ylim <- c(min(ylim[,1]),max(ylim[,2]))
+xlim <- c(min(xlim[,1],na.rm=TRUE),max(xlim[,2],na.rm=TRUE))
+ylim <- c(min(ylim[,1],na.rm=TRUE),max(ylim[,2],na.rm=TRUE))
 
 #shift X, xlim, ylim, so lower left side of state space is (0,0)
 #this is required to use efficient look-up table to find the cell number
@@ -448,9 +451,7 @@ calcNodes <- c(N.nodes,N.recruit.nodes,y.mark.nodes,y.um.nodes,y.unk.nodes,z.nod
 conf$addSampler(target = c("z"),
                 type = 'zSampler',control = list(M=M,n.marked.all=n.marked.all,n.cap.all=n.cap.all,
                                                  n.primary=n.primary,J.mark=J.mark,J.sight=J.sight,
-                                                 K.sight=K.sight,
-                                                 mark.g=mark.g,sight.g=sight.g,
-                                                 n.mark.g=n.mark.g,
+                                                 K.sight=K.sight,sight.g=sight.g,
                                                  n.sight.g=n.sight.g,
                                                  mark.states=nimbuild$mark.states,
                                                  tel.z.states=nimbuild$tel.z.states,
@@ -479,8 +480,9 @@ for(i in 1:M){
   conf$addSampler(target = paste("s[",i,", 1:2]", sep=""),
                   type = 'sSamplerDcov',control=list(i=i,res=res,n.cells.x=n.cells.x,n.cells.y=n.cells.y,
                                                      xlim=xlim,ylim=ylim,J.mark=J.mark,J.sight=J.sight,
-                                                     K.sight=K.sight,n.marked.all=nimbuild$n.marked.all,
-                                                     n.primary=n.primary,loc.nodes=loc.nodes,mark.states=nimbuild$mark.states[i,,]),
+                                                     K.sight=K.sight,sight.g=sight.g,n.sight.g=n.sight.g,
+                                                     n.marked.all=nimbuild$n.marked.all,n.primary=n.primary,
+                                                     loc.nodes=loc.nodes,mark.states=nimbuild$mark.states[i,,]),
                   silent = TRUE)
 }
 

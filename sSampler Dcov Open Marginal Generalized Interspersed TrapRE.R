@@ -14,6 +14,8 @@ sSamplerDcov <- nimbleFunction(
     n.marked.all <- control$n.marked.all
     n.primary <- control$n.primary
     mark.states <- control$mark.states
+    sight.g <- control$sight.g
+    n.sight.g <- control$n.sight.g
     ## control list extraction
     # logScale            <- extractControlElement(control, 'log',                 FALSE)
     # reflective          <- extractControlElement(control, 'reflective',          FALSE)
@@ -105,7 +107,8 @@ sSamplerDcov <- nimbleFunction(
           #subtract these out before calculating lam
           bigLam.marked.proposed <- bigLam.marked.initial
           bigLam.unmarked.proposed <- bigLam.unmarked.initial
-          for(g in 1:n.primary){
+          for(g2 in 1:n.sight.g){
+            g <- sight.g[g2]
             if(model$z[i,g]==1){ #z.super always 1 here
               for(k in 1:K.sight[g]){
                 bigLam.marked.proposed[g,1:J.sight[g],k] <- bigLam.marked.proposed[g,1:J.sight[g],k] - model$lam[i,g,1:J.sight[g]]*mark.states[g,k]
@@ -125,7 +128,8 @@ sSamplerDcov <- nimbleFunction(
           model$calculate(pd.nodes) #update pd nodes
           model$calculate(lam.nodes) #update lam nodes
           #add these in after calculating lam
-          for(g in 1:n.primary){
+          for(g2 in 1:n.sight.g){
+            g <- sight.g[g2]
             if(model$z[i,g]==1){
               for(k in 1:K.sight[g]){
                 bigLam.marked.proposed[g,1:J.sight[g],k] <- bigLam.marked.proposed[g,1:J.sight[g],k] + model$lam[i,g,1:J.sight[g]]*mark.states[g,k]
@@ -157,7 +161,8 @@ sSamplerDcov <- nimbleFunction(
           lp.proposed.s <- model$calculate(s.nodes) #proposed logprob for s.nodes
           #subtract these out before calculating lam
           bigLam.unmarked.proposed <- bigLam.unmarked.initial
-          for(g in 1:n.primary){ #z.super always 1 here
+          for(g2 in 1:n.sight.g){ #z.super always 1 here
+            g <- sight.g[g2]
             if(model$z[i,g]==1){
               for(k in 1:K.sight[g]){
                 bigLam.unmarked.proposed[g,1:J.sight[g],k] <- bigLam.unmarked.proposed[g,1:J.sight[g],k] - model$lam[i,g,1:J.sight[g]]
@@ -173,7 +178,8 @@ sSamplerDcov <- nimbleFunction(
           model$calculate(pd.nodes) #update pd nodes
           model$calculate(lam.nodes) #update lam nodes
           #add these in after calculating lam
-          for(g in 1:n.primary){
+          for(g2 in 1:n.sight.g){
+            g <- sight.g[g2]
             if(model$z[i,g]==1){
               for(k in 1:K.sight[g]){
                 bigLam.unmarked.proposed[g,1:J.sight[g],k] <- bigLam.unmarked.proposed[g,1:J.sight[g],k] + model$lam[i,g,1:J.sight[g]]

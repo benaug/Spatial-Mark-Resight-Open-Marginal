@@ -12,13 +12,13 @@ rtruncpois <- function(n,lambda,lower=0,upper=Inf){
 }
 
 sim.JS.SMR.Dcov.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
-                            phi=NA,gamma=NA,n.primary=NA,
-                            theta.marked=NA,theta.unmarked=NA,
-                            K.mark=NA,K.sight=NA,K1D.mark=NA,K1D.sight=NA,
-                            p0=NA,lam0=NA,sigma=NA,X.mark=NA,X.sight=NA,buff=buff,xlim=NA,
-                            ylim=NA,res=NA,
-                            mark.g.pars=NA,mark.protocol=NA,
-                            n.tel.locs=NA,p.mark=NA){
+                                        phi=NA,gamma=NA,n.primary=NA,
+                                        theta.marked=NA,theta.unmarked=NA,
+                                        K.mark=NA,K.sight=NA,K1D.mark=NA,K1D.sight=NA,
+                                        p0=NA,lam0=NA,sigma=NA,X.mark=NA,X.sight=NA,buff=buff,xlim=NA,
+                                        ylim=NA,res=NA,
+                                        mark.g.pars=NA,mark.protocol=NA,
+                                        n.tel.locs=NA,p.mark=NA){
   
   J.mark <- J.sight <- rep(NA,n.primary)
   for(g in 1:n.primary){
@@ -26,6 +26,12 @@ sim.JS.SMR.Dcov.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
     X.sight[[g]] <- as.matrix(X.sight[[g]])
     J.mark[g] <- nrow(X.mark[[g]])
     J.sight[g] <- nrow(X.sight[[g]])
+    if((K.mark[g]==0)!=(J.mark[g]==0)){
+      stop(paste("X.mark and K.mark inconsistent in session",g))
+    }
+    if((K.sight[g]==0)!=(J.sight[g]==0)){
+      stop(paste("X.sight and K.sight inconsistent in session",g))
+    }
   }
   
   #trap operation - marking process
@@ -74,7 +80,7 @@ sim.JS.SMR.Dcov.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   lambda.cell <- InSS*exp(D.beta0 + D.beta1*D.cov)*cellArea
   lambda.y1 <- sum(lambda.cell)
   N[1] <- rpois(1,lambda.y1)
-
+  
   #recreate some Dcov things so we can pass fewer arguments into this function
   x.vals <- seq(xlim[1]+res/2,xlim[2]-res/2,res) #x cell centroids
   y.vals <- seq(ylim[1]+res/2,ylim[2]-res/2,res) #y cell centroids
@@ -83,7 +89,7 @@ sim.JS.SMR.Dcov.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   n.cells <- nrow(dSS)
   n.cells.x <- length(x.vals)
   n.cells.y <- length(y.vals)
-
+  
   #Easiest to increase dimension of z as we simulate bc size not known in advance.
   z <- matrix(0,N[1],n.primary)
   z[1:N[1],1] <- 1
@@ -103,10 +109,10 @@ sim.JS.SMR.Dcov.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
     N.survive[g-1] <- sum(z[,g-1]==1&z[,g]==1)
     N[g] <- N.recruit[g-1]+N.survive[g-1]
   }
-
+  
   if(any(N.recruit+N.survive!=N[2:n.primary]))stop("Simulation bug")
   if(any(colSums(z)!=N))stop("Simulation bug")
-
+  
   z.start <- apply(z,1,function(x){which(x==1)[1]})
   z.stop <- n.primary-apply(z,1,function(x){which(rev(x)==1)[1]})+1
   
@@ -116,7 +122,7 @@ sim.JS.SMR.Dcov.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   K.mark.max <- max(K.mark)
   J.sight.max <- max(J.sight)
   K.sight.max <- max(K.sight)
-
+  
   #simulate activity centers - fixed through time
   N.super <- nrow(z)
   # simulate a population of activity centers
@@ -160,10 +166,10 @@ sim.JS.SMR.Dcov.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   }
   
   if(sum(y)==0)stop("No individuals resighted. Reconsider parameter settings.")
-
+  
   #store true data for debugging
   truth <- list(y.mark=y.mark,y=y,N=N,N.recruit=N.recruit,N.survive=N.survive,z=z,s=s)
-
+  
   #mark/telemetry data
   #deploy collars to individuals captured in marking process
   mark.caps <- 1*apply(y.mark,c(1,2),sum)
@@ -223,30 +229,32 @@ sim.JS.SMR.Dcov.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   for(g in 1:n.primary){
     if(K.sight[g]>0){ #skip if no effort in this primary occasion
       #loop over cells with positive counts
-      idx <- which(y[,g,]>0,arr.ind=TRUE)
-      for(l in 1:nrow(idx)){
-        if(mark.states[idx[l,1],g]==1){ #if marked
-          y.event[idx[l,1],g,idx[l,2],] <- rmultinom(1,y[idx[l,1],g,idx[l,2]],theta.marked)
-        }else{#if unmarked
-          y.event[idx[l,1],g,idx[l,2],] <- rmultinom(1,y[idx[l,1],g,idx[l,2]],c(0,theta.unmarked,1-theta.unmarked))
+      y.g <- matrix(y[,g,1:J.sight[g]],nrow=N.super,ncol=J.sight[g])
+      idx <- which(y.g>0,arr.ind=TRUE)
+      if(nrow(idx)>0){
+        for(l in 1:nrow(idx)){
+          if(mark.states[idx[l,1],g]==1){ #if marked
+            y.event[idx[l,1],g,idx[l,2],] <- rmultinom(1,y[idx[l,1],g,idx[l,2]],theta.marked)
+          }else{#if unmarked
+            y.event[idx[l,1],g,idx[l,2],] <- rmultinom(1,y[idx[l,1],g,idx[l,2]],c(0,theta.unmarked,1-theta.unmarked))
+          }
         }
       }
       marked.inds <- which(mark.states[,g]==1)
       unmarked.inds <- which(mark.states[,g]==0)
-      y.mID[,g,] <- apply(y.event[ID.marked.all,g,,1],c(1,2),sum) #include all marked individuals for consistent individual numbers across primary occasions
-      if(n.marked[g]>0){
-        if(n.marked[g]==1){
-          y.mnoID[g,] <- y.event[marked.inds,g,,2]
-          y.unk[g,] <- y.event[marked.inds,g,,3] + apply(y.event[unmarked.inds,g,,3],2,sum)
-        }else{
-          y.mnoID[g,] <- apply(y.event[marked.inds,g,,2],2,sum)
-          y.unk[g,] <- apply(y.event[marked.inds,g,,3],2,sum) + apply(y.event[unmarked.inds,g,,3],2,sum)
-        }
-      }else{
-        y.mnoID[g,] <- rep(0,J.sight[g])
-        y.unk[g,] <- apply(y.event[unmarked.inds,g,,3],2,sum) #no marked counts to add
+      for(i2 in 1:n.marked.all){
+        y.mID[i2,g,1:J.sight[g]] <- y.event[ID.marked.all[i2],g,1:J.sight[g],1]
       }
-      y.um[g,] <- apply(y.event[unmarked.inds,g,,2],2,sum)
+      for(j in 1:J.sight[g]){
+        if(length(marked.inds)>0){
+          y.mnoID[g,j] <- sum(y.event[marked.inds,g,j,2])
+          y.unk[g,j] <- sum(y.event[marked.inds,g,j,3])
+        }
+        if(length(unmarked.inds)>0){
+          y.um[g,j] <- sum(y.event[unmarked.inds,g,j,2])
+          y.unk[g,j] <- y.unk[g,j]+sum(y.event[unmarked.inds,g,j,3])
+        }
+      }
       if(!sum(y[,g,])==(sum(y.mID[,g,])+sum(y.mnoID[g,])+sum(y.um[g,])+sum(y.unk[g,])))stop("data simulator bug")
     }
   }
@@ -321,8 +329,8 @@ sim.JS.SMR.Dcov.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   #   n.locs.ind <- NA
   # }
   
-  mark.states <- mark.states[ID.marked.all,]
-  tel.z.states <- tel.z.states[ID.marked.all,]
+  mark.states <- mark.states[ID.marked.all,,drop=FALSE]
+  tel.z.states <- tel.z.states[ID.marked.all,,drop=FALSE]
   
   #renumber ID.marked and ID.marked.all in new order after discarding unmarked guys in numbering
   #reorder y, z, s first
@@ -334,13 +342,13 @@ sim.JS.SMR.Dcov.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
   ID.cap.unmarked.all <- setdiff(ID.cap.all,ID.marked.all)
   ID.unobserved.all <- setdiff(1:N.super,c(ID.marked.all,ID.cap.unmarked.all))
   ID.order <- c(ID.marked.all,ID.cap.unmarked.all,ID.unobserved.all)
-  s <- s[ID.order,]
+  s <- s[ID.order,,drop=FALSE]
   s.cell <- s.cell[ID.order]
-  z <- z[ID.order,]
-  y.mark <- y.mark[ID.order,,]
-  y <- y[ID.order,,]
-  mark.caps <- mark.caps[ID.order,]
-  mark.deploy <- mark.deploy[ID.order,]
+  z <- z[ID.order,,drop=FALSE]
+  y.mark <- y.mark[ID.order,,,drop=FALSE]
+  y <- y[ID.order,,,drop=FALSE]
+  mark.caps <- mark.caps[ID.order,,drop=FALSE]
+  mark.deploy <- mark.deploy[ID.order,,drop=FALSE]
   #update truth
   truth$s <- s
   truth$z <- z

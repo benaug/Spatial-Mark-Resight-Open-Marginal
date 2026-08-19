@@ -25,8 +25,8 @@ sigma <- rep(0.5,n.primary) #detection function scale by primary occasion
 p.mark <- rep(0.75,n.primary) #probability of marking given captured in marking process by primary occasion
 #Number of occasions per primary occasion per method
 #to skip sampling by a method in a primary occasion, set its K=0
-K.mark <- c(8,0,0,8,0,0) #marking occasions by primary occasion
-K.sight <- c(5,5,5,5,5,5) #resighting occasions by primary occasion
+K.mark <- c(8,0,8,8,0,0) #marking occasions by primary occasion
+K.sight <- c(5,5,0,5,5,0) #resighting occasions by primary occasion
 if(length(K.mark)!=length(K.sight))stop("K.mark and K.sight must be same length")
 if(length(K.mark)!=n.primary)stop("K.mark and K.sight must be of length n.primary")
 
@@ -40,15 +40,15 @@ theta.unmarked <- 0.75 #prob known marked status. #P(ID, Marked no ID, unk statu
 X.sight <- vector("list",n.primary)
 X.sight[[1]] <- as.matrix(expand.grid(1:10,1:10))
 X.sight[[2]] <- as.matrix(expand.grid(1:10,1:10))
-X.sight[[3]] <- as.matrix(expand.grid(1:10,1:10))
+X.sight[[3]] <- matrix(0,nrow=0,ncol=2)
 X.sight[[4]] <- as.matrix(expand.grid(1:10,1:10))
 X.sight[[5]] <- as.matrix(expand.grid(1:10,1:10))
-X.sight[[6]] <- as.matrix(expand.grid(1:10,1:10))
+X.sight[[6]] <- matrix(0,nrow=0,ncol=2)
 
 X.mark <- vector("list",n.primary)
 X.mark[[1]] <- as.matrix(expand.grid(3:8,3:8))
 X.mark[[2]] <- matrix(0,nrow=0,ncol=2)
-X.mark[[3]] <- matrix(0,nrow=0,ncol=2)
+X.mark[[3]] <- as.matrix(expand.grid(3:8,3:8))
 X.mark[[4]] <- as.matrix(expand.grid(3:8,3:8))
 X.mark[[5]] <- matrix(0,nrow=0,ncol=2)
 X.mark[[6]] <- matrix(0,nrow=0,ncol=2)
@@ -78,15 +78,15 @@ for(g in 1:n.primary){
 #For each primary session, a character vector of length K.mark[g] + K.sight[g] specifying the order of the marking
 #and sighting occasions. Vector elements are either "M" or "S" arranged in the order the marking
 #and sighting occasions occurred. There must be K.mark[g] M's and K.sight[g] S's. 
-#Set K.order[[g]] <- NA if no sighting effort in primary occasion g
+#Set K.order[[g]] <- NA only if there is no marking or sighting effort in primary occasion g
 #Data simulator will check these requirements.
 K.order <- vector("list",n.primary)
 K.order[[1]] <- c("M","M","M","M","M","S","S","S","M","M","M","S","S")
 K.order[[2]] <- rep("S",5)
-K.order[[3]] <- rep("S",5)
+K.order[[3]] <- rep("M",8)
 K.order[[4]] <- c("M","M","M","M","S","S","S","M","M","M","M","S","S")
 K.order[[5]] <- rep("S",5)
-K.order[[6]] <- rep("S",5)
+K.order[[6]] <- NA
 
 ### Habitat covariate stuff###
 #get x and y extent for each grid separately, then merge
@@ -95,11 +95,13 @@ buff <- 2 #state space buffer around traps
 X.both <- vector("list",n.primary)
 for(g in 1:n.primary){
   X.both[[g]] <- rbind(X.mark[[g]],X.sight[[g]])
-  xlim[g,] <- range(X.both[[g]][,1]) + c(-buff,buff)
-  ylim[g,] <- range(X.both[[g]][,2]) + c(-buff,buff)
+  if(nrow(X.both[[g]])>0){
+    xlim[g,] <- range(X.both[[g]][,1]) + c(-buff,buff)
+    ylim[g,] <- range(X.both[[g]][,2]) + c(-buff,buff)
+  }
 }
-xlim <- c(min(xlim[,1]),max(xlim[,2]))
-ylim <- c(min(ylim[,1]),max(ylim[,2]))
+xlim <- c(min(xlim[,1],na.rm=TRUE),max(xlim[,2],na.rm=TRUE))
+ylim <- c(min(ylim[,1],na.rm=TRUE),max(ylim[,2],na.rm=TRUE))
 
 #shift X, xlim, ylim, so lower left side of state space is (0,0)
 #this is required to use efficient look-up table to find the cell number
@@ -346,26 +348,28 @@ for(g in 1:n.primary){
   points(data$X.sight[[g]],pch=4,lwd=2)
   points(data$X.mark[[g]],pch=4,lwd=2,col="darkred")
   points(nimbuild$s[nimbuild$z[,g]==1,1],nimbuild$s[nimbuild$z[,g]==1,2],pch=16) #initialized activity centers
-  for(i in 1:n.marked[g]){
-    id <- nimbuild$ID.marked[i,g]
-    traps <- matrix(numeric(0),nrow=0,ncol=2)
-    if(J.sight[g]>0){
-      trapcaps <- which(rowSums(nimbuild$y.mID[nimbuild$ID.marked[i,g],g,,])>0)
-      if(length(trapcaps)>0){
-        traps <- rbind(traps,nimbuild$X.sight[g,trapcaps,1:2])
+  if(n.marked[g]>0){
+    for(i in 1:n.marked[g]){
+      id <- nimbuild$ID.marked[i,g]
+      traps <- matrix(numeric(0),nrow=0,ncol=2)
+      if(J.sight[g]>0){
+        trapcaps <- which(rowSums(nimbuild$y.mID[nimbuild$ID.marked[i,g],g,,])>0)
+        if(length(trapcaps)>0){
+          traps <- rbind(traps,nimbuild$X.sight[g,trapcaps,1:2])
+        }
       }
-    }
-    if(J.mark[g]>0){
-      trapcaps2 <- which(nimbuild$y.mark[id,g,1:J.mark[g]]>0)
-      if(length(trapcaps2)>0){
-        traps <- rbind(traps,nimbuild$X.mark[g,trapcaps2,1:2])
+      if(J.mark[g]>0){
+        trapcaps2 <- which(nimbuild$y.mark[id,g,1:J.mark[g]]>0)
+        if(length(trapcaps2)>0){
+          traps <- rbind(traps,nimbuild$X.mark[g,trapcaps2,1:2])
+        }
       }
-    }
-    s <- nimbuild$s[nimbuild$ID.marked[i,g],]
-    points(s[1],s[2],col="goldenrod",pch=16)
-    if(nrow(traps)>0){
-      for(j in 1:nrow(traps)){
-        lines(x=c(s[1],traps[j,1]),y=c(s[2],traps[j,2]),col="goldenrod")
+      s <- nimbuild$s[nimbuild$ID.marked[i,g],]
+      points(s[1],s[2],col="goldenrod",pch=16)
+      if(nrow(traps)>0){
+        for(j in 1:nrow(traps)){
+          lines(x=c(s[1],traps[j,1]),y=c(s[2],traps[j,2]),col="goldenrod")
+        }
       }
     }
   }
@@ -475,7 +479,8 @@ for(i in 1:M){
                   type = 'sSamplerDcov',control=list(i=i,res=res,n.cells.x=n.cells.x,n.cells.y=n.cells.y,
                                                      xlim=xlim,ylim=ylim,J.mark=J.mark,J.sight=J.sight,
                                                      K.sight=K.sight,n.marked.all=nimbuild$n.marked.all,
-                                                     n.primary=n.primary,loc.nodes=loc.nodes,mark.states=nimbuild$mark.states[i,,]),
+                                                     n.primary=n.primary,loc.nodes=loc.nodes,mark.states=nimbuild$mark.states[i,,],
+                                                     sight.g=sight.g,n.sight.g=n.sight.g),
                   silent = TRUE)
 }
 

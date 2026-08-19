@@ -80,7 +80,7 @@ for(g in 1:n.primary){
 #For each primary session, a character vector of length K.mark[g] + K.sight[g] specifying the order of the marking
 #and sighting occasions. Vector elements are either "M" or "S" arranged in the order the marking
 #and sighting occasions occurred. There must be K.mark[g] M's and K.sight[g] S's. 
-#Set K.order[[g]] <- NA if no sighting effort in primary occasion g
+#Set K.order[[g]] <- NA only if there is no marking or sighting effort in primary occasion g
 #Data simulator will check these requirements.
 K.order <- vector("list",n.primary)
 K.order[[1]] <- c("M","M","M","M","M","S","S","S","M","M","M","S","S")
@@ -90,6 +90,7 @@ K.order[[4]] <- c("M","M","M","M","S","S","S","M","M","M","M","S","S")
 K.order[[5]] <- c("M","M","M","M","S","S","S","M","M","M","M","S","S")
 K.order[[6]] <-c("M","M","M","M","S","S","S","M","M","M","M","S","S")
 
+
 ### Habitat covariate stuff###
 #get x and y extent for each grid separately, then merge
 xlim <- ylim <- matrix(NA,n.primary,2)
@@ -97,11 +98,13 @@ buff <- 3 #state space buffer around traps
 X.both <- vector("list",n.primary)
 for(g in 1:n.primary){
   X.both[[g]] <- rbind(X.mark[[g]],X.sight[[g]])
-  xlim[g,] <- range(X.both[[g]][,1]) + c(-buff,buff)
-  ylim[g,] <- range(X.both[[g]][,2]) + c(-buff,buff)
+  if(nrow(X.both[[g]])>0){
+    xlim[g,] <- range(X.both[[g]][,1]) + c(-buff,buff)
+    ylim[g,] <- range(X.both[[g]][,2]) + c(-buff,buff)
+  }
 }
-xlim <- c(min(xlim[,1]),max(xlim[,2]))
-ylim <- c(min(ylim[,1]),max(ylim[,2]))
+xlim <- c(min(xlim[,1],na.rm=TRUE),max(xlim[,2],na.rm=TRUE))
+ylim <- c(min(ylim[,1],na.rm=TRUE),max(ylim[,2],na.rm=TRUE))
 
 #shift X, xlim, ylim, so lower left side of state space is (0,0)
 #this is required to use efficient look-up table to find the cell number
@@ -182,13 +185,13 @@ mark.protocol <- 2
 # simulate some data
 set.seed(390297) #change seed for new data set
 data <- sim.JS.SMR.Dcov.mobileAC.Generalized.Interspersed(D.beta0=D.beta0,D.beta1=D.beta1,D.cov=D.cov,
-            InSS=InSS,phi=phi,gamma=gamma,n.primary=n.primary,K.order=K.order,
-            theta.marked=theta.marked,theta.unmarked=theta.unmarked,
-            p0=p0,lam0=lam0,sigma=sigma,sigma.move=sigma.move,rsf.beta=rsf.beta,
-            K.mark=K.mark,K.sight=K.sight,
-            X.mark=X.mark,X.sight=X.sight,xlim=xlim,ylim=ylim,res=res,
-            mark.g.pars=mark.g.pars,mark.protocol=mark.protocol,
-            p.mark=p.mark,n.tel.locs=n.tel.locs)
+                                                          InSS=InSS,phi=phi,gamma=gamma,n.primary=n.primary,K.order=K.order,
+                                                          theta.marked=theta.marked,theta.unmarked=theta.unmarked,
+                                                          p0=p0,lam0=lam0,sigma=sigma,sigma.move=sigma.move,rsf.beta=rsf.beta,
+                                                          K.mark=K.mark,K.sight=K.sight,
+                                                          X.mark=X.mark,X.sight=X.sight,xlim=xlim,ylim=ylim,res=res,
+                                                          mark.g.pars=mark.g.pars,mark.protocol=mark.protocol,
+                                                          p.mark=p.mark,n.tel.locs=n.tel.locs)
 
 #what is observed data? Note data objects have all n.primarys with all 0 data if no effort for a method
 #Could be structured without primary occasions with no effort, but that would require more work changing custom
