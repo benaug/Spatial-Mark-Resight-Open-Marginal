@@ -223,6 +223,26 @@ init.SMR.Dcov.Open.Generalized.Interspersed.TrapRE <- function(data,inits=NA,M=N
     }
   }
   
+  #z.start/z.stop sampler requires all marked sighting secondary occasions to fall
+  #between the first and last primary occasions at which the individual is known alive
+  for(i in 1:n.cap.all){
+    dets <- which(y2D[i,]>0)
+    if(length(dets)==0){
+      stop(paste("Individual",i,"in 1:n.cap.all has no known-alive occasion in y2D."))
+    }
+    first.det <- min(dets)
+    last.det <- max(dets)
+    for(g in 1:n.primary){
+      if(K.sight[g]>0){
+        if((g<first.det | g>last.det) &
+           any(mark.states[i,g,1:K.sight[g]]==1)){
+          stop(paste("Individual",i,"has mark.states==1 outside its known-alive interval;",
+                     "this is incompatible with the z.start/z.stop sampler."))
+        }
+      }
+    }
+  }
+  
   #check starting logProbs one session at a time
   for(g in 1:n.primary){
     #marking process

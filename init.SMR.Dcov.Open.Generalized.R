@@ -199,6 +199,25 @@ init.SMR.Dcov.Open.Generalized <- function(data,inits=NA,M=NA){
     }
   }
   
+  #z.start/z.stop sampler requires marked sighting primary occasions to fall
+  #between the first and last primary occasions at which the individual is known alive
+  for(i in 1:n.cap.all){
+    dets <- which(y2D[i,]>0)
+    if(length(dets)==0){
+      stop(paste("Individual",i,"in 1:n.cap.all has no known-alive occasion in y2D."))
+    }
+    first.det <- min(dets)
+    last.det <- max(dets)
+    for(g in 1:n.primary){
+      if(K.sight[g]>0){
+        if((g<first.det | g>last.det) & mark.states[i,g]==1){
+          stop(paste("Individual",i,"has mark.states==1 outside its known-alive interval;",
+                     "this is incompatible with the z.start/z.stop sampler."))
+        }
+      }
+    }
+  }
+  
   #check starting logProbs one session at a time
   for(g in 1:n.primary){
     if(J.mark[g]>0){

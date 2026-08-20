@@ -331,16 +331,6 @@ inits <- list(p0=rep(0.1,n.primary),lam0=rep(0.25,n.primary),
 #This function structures the simulated data to fit the model in Nimble (some more restructing below)
 nimbuild <- init.SMR.Dcov.Open.Generalized.Interspersed.TrapRE(data,inits,M=M)
 
-#make sure that if we know an individual is marked in primary occasion g, it is known to be alive in primary occasion g
-#otherwise, how would you know it still has a mark?
-mark.consistency <- which(data$mark.states2D==1&nimbuild$y2D[1:data$n.marked.all,]==0,arr.ind=TRUE)
-if(nrow(mark.consistency)==0){
-  print("mark state consistency check passed")
-}else{
-  print("mark.states2D==1 but y2D==0, marked individuals must be known to be alive")
-  print(mark.consistency)
-}
-
 #plot to check s inits by primary occasion
 for(g in 1:n.primary){
   image(x.vals,y.vals,matrix(D.cov*InSS,n.cells.x,n.cells.y),
