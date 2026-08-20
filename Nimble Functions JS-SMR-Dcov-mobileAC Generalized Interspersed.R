@@ -1338,7 +1338,7 @@ zSampler <- nimbleFunction(
       if(updown==0){#subtract
         #keep at least one unmarked individual in the superpopulation
         non.init <- non.curr
-        if(non.init>1){
+        if(non.init>0){
           pick.pos <- rcat(1,rep(1/non.init,non.init))
           pick <- z.on[pick.pos]
           z.start.curr <- model$z.start[pick]

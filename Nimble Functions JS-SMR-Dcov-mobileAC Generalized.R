@@ -1257,9 +1257,8 @@ zSampler <- nimbleFunction(
       #propose to add/subtract 1
       updown <- rbinom(1,1,0.5) #p=0.5 is symmetric. If you change this, must account for asymmetric proposal
       if(updown==0){#subtract
-        #keep at least one unmarked individual in the superpopulation
         non.init <- non.curr
-        if(non.init>1){
+        if(non.init>0){
           pick.pos <- rcat(1,rep(1/non.init,non.init))
           pick <- z.on[pick.pos]
           z.start.curr <- model$z.start[pick]
