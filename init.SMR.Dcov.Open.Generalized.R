@@ -68,7 +68,7 @@ init.SMR.Dcov.Open.Generalized <- function(data,inits=NA,M=NA){
   s.init <- cbind(runif(M,xlim[1],xlim[2]), runif(M,ylim[1],ylim[2]))
   
   #but update s.inits for marked individuals (and unmarked captured in marking process) before assigning latent detections
-  has.mark <- apply(y.mark[1:n.cap.all,,],1,sum)>0
+  has.mark <- apply(y.mark[1:n.cap.all,,,drop=FALSE],1,sum)>0
   has.mID <- rep(FALSE,n.cap.all)
   has.mID[1:n.marked.all] <- rowSums(y.mID)>0
   has.tel <- (1:n.cap.all)%in%data$tel.ID

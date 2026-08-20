@@ -446,7 +446,7 @@ sim.JS.SMR.Dcov.Generalized.Interspersed <- function(D.beta0=NA,D.beta1=NA,D.cov
               ID.marked=ID.marked,ID.marked.all=ID.marked.all,
               mark.states2D=mark.states2D,mark.states=mark.states,tel.z.states=tel.z.states,
               ID.cap.all=ID.cap.all,n.cap.all=n.cap.all,mark.deploy=mark.deploy,mark.caps=mark.caps,
-              N=N,N.recruit=N.recruit,N.survive=N.survive,N.super=N.super,X.mark=X.mark,X.sight=X.sight,
+              N.recruit=N.recruit,N.survive=N.survive,N.super=N.super,X.mark=X.mark,X.sight=X.sight,
               K.mark=K.mark,K.sight=K.sight,
               J.mark=J.mark,J.sight=J.sight,K1D.mark=K1D.mark,K2D.sight=K2D.sight,
               xlim=xlim,ylim=ylim,x.vals=x.vals,y.vals=y.vals,dSS=dSS,cells=cells,

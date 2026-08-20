@@ -465,7 +465,7 @@ sim.JS.SMR.Dcov.Generalized.Interspersed.TrapRE <- function(D.beta0=NA,D.beta1=N
               J.mark=J.mark,J.sight=J.sight,K1D.mark=K1D.mark,K2D.sight=K2D.sight,
               xlim=xlim,ylim=ylim,x.vals=x.vals,y.vals=y.vals,dSS=dSS,cells=cells,
               n.cells=n.cells,n.cells.x=n.cells.x,n.cells.y=n.cells.y,s.cell=s.cell,s=s,
-              D.cov=D.cov,InSS=InSS,res=res,cellArea=cellArea,N=N,lambda.y1=lambda.y1,
+              D.cov=D.cov,InSS=InSS,res=res,cellArea=cellArea,lambda.y1=lambda.y1,
               truth=truth))
 }
 
