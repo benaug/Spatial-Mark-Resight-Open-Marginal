@@ -26,7 +26,7 @@ p.mark <- rep(0.75,n.primary) #probability of marking given captured in marking 
 #Number of occasions per primary occasion per method
 #to skip sampling by a method in a primary occasion, set its K=0
 K.mark <- c(8,0,0,8,0,0) #marking occasions by primary occasion
-K.sight <- c(15,15,15,15,15,15) #resighting occasions by primary occasion
+K.sight <- c(10,10,10,10,10,10) #resighting occasions by primary occasion
 if(length(K.mark)!=length(K.sight))stop("K.mark and K.sight must be same length")
 if(length(K.mark)!=n.primary)stop("K.mark and K.sight must be of length n.primary")
 
@@ -81,12 +81,12 @@ for(g in 1:n.primary){
 #Set K.order[[g]] <- NA only if there is no marking or sighting effort in primary occasion g
 #Data simulator will check these requirements.
 K.order <- vector("list",n.primary)
-K.order[[1]] <- c("M","M","M","M","M","S","S","S","M","M","M","S","S",rep("S",10))
-K.order[[2]] <- rep("S",15)
-K.order[[3]] <- rep("S",15)
-K.order[[4]] <- c("M","M","M","M","S","S","S","M","M","M","M","S","S",rep("S",10))
-K.order[[5]] <- rep("S",15)
-K.order[[6]] <- rep("S",15)
+K.order[[1]] <- c("M","M","M","M","M","S","S","S","M","M","M","S","S",rep("S",5))
+K.order[[2]] <- rep("S",10)
+K.order[[3]] <- rep("S",10)
+K.order[[4]] <- c("M","M","M","M","S","S","S","M","M","M","M","S","S",rep("S",5))
+K.order[[5]] <- rep("S",10)
+K.order[[6]] <- rep("S",10)
 
 ### Habitat covariate stuff###
 #get x and y extent for each grid separately, then merge
