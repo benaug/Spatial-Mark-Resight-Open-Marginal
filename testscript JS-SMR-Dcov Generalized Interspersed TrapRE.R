@@ -25,8 +25,8 @@ sigma <- rep(0.5,n.primary) #detection function scale by primary occasion
 p.mark <- rep(0.75,n.primary) #probability of marking given captured in marking process by primary occasion
 #Number of occasions per primary occasion per method
 #to skip sampling by a method in a primary occasion, set its K=0
-K.mark <- c(8,0,8,8,0,0) #marking occasions by primary occasion
-K.sight <- c(5,5,0,5,5,0) #resighting occasions by primary occasion
+K.mark <- c(8,0,0,8,0,0) #marking occasions by primary occasion
+K.sight <- c(15,15,15,15,15,15) #resighting occasions by primary occasion
 if(length(K.mark)!=length(K.sight))stop("K.mark and K.sight must be same length")
 if(length(K.mark)!=n.primary)stop("K.mark and K.sight must be of length n.primary")
 
