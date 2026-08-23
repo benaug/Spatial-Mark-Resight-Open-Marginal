@@ -40,15 +40,15 @@ theta.unmarked <- 0.75 #prob known marked status. #P(ID, Marked no ID, unk statu
 X.sight <- vector("list",n.primary)
 X.sight[[1]] <- as.matrix(expand.grid(1:10,1:10))
 X.sight[[2]] <- as.matrix(expand.grid(1:10,1:10))
-X.sight[[3]] <- matrix(0,nrow=0,ncol=2)
+X.sight[[3]] <- as.matrix(expand.grid(1:10,1:10))
 X.sight[[4]] <- as.matrix(expand.grid(1:10,1:10))
 X.sight[[5]] <- as.matrix(expand.grid(1:10,1:10))
-X.sight[[6]] <- matrix(0,nrow=0,ncol=2)
+X.sight[[6]] <- as.matrix(expand.grid(1:10,1:10))
 
 X.mark <- vector("list",n.primary)
 X.mark[[1]] <- as.matrix(expand.grid(3:8,3:8))
 X.mark[[2]] <- matrix(0,nrow=0,ncol=2)
-X.mark[[3]] <- as.matrix(expand.grid(3:8,3:8))
+X.mark[[3]] <- matrix(0,nrow=0,ncol=2)
 X.mark[[4]] <- as.matrix(expand.grid(3:8,3:8))
 X.mark[[5]] <- matrix(0,nrow=0,ncol=2)
 X.mark[[6]] <- matrix(0,nrow=0,ncol=2)
@@ -81,12 +81,12 @@ for(g in 1:n.primary){
 #Set K.order[[g]] <- NA only if there is no marking or sighting effort in primary occasion g
 #Data simulator will check these requirements.
 K.order <- vector("list",n.primary)
-K.order[[1]] <- c("M","M","M","M","M","S","S","S","M","M","M","S","S")
-K.order[[2]] <- rep("S",5)
-K.order[[3]] <- rep("M",8)
-K.order[[4]] <- c("M","M","M","M","S","S","S","M","M","M","M","S","S")
-K.order[[5]] <- rep("S",5)
-K.order[[6]] <- NA
+K.order[[1]] <- c("M","M","M","M","M","S","S","S","M","M","M","S","S",rep("S",10))
+K.order[[2]] <- rep("S",15)
+K.order[[3]] <- rep("S",15)
+K.order[[4]] <- c("M","M","M","M","S","S","S","M","M","M","M","S","S",rep("S",10))
+K.order[[5]] <- rep("S",15)
+K.order[[6]] <- rep("S",15)
 
 ### Habitat covariate stuff###
 #get x and y extent for each grid separately, then merge
