@@ -1471,3 +1471,38 @@ truncGammaPoisSampler <- nimbleFunction(
   },
   methods=list(reset=function(){})
 )
+
+phiGibbsSampler <- nimbleFunction(
+  contains=sampler_BASE,
+  setup=function(model,mvSaved,target,control){
+    calcNodes <- model$getDependencies(target)
+    if(target=="phi.fixed"){
+      is.fixed.phi <- TRUE
+      g <- 1
+      surviveNodes <- grep("^N.survive\\[",model$getNodeNames(stochOnly=FALSE),value=TRUE)
+      n.trans <- length(surviveNodes)
+    }else{
+      is.fixed.phi <- FALSE
+      g <- as.integer(gsub("[^0-9]","",target))
+      n.trans <- 1
+    }
+  },
+  run=function(){
+    if(is.fixed.phi){
+      n.survive <- 0
+      n.die <- 0
+      for(j in 1:n.trans){
+        n.survive <- n.survive + model$N.survive[j]
+        n.die <- n.die + model$N[j] - model$N.survive[j]
+      }
+    }else{
+      n.survive <- model$N.survive[g]
+      n.die <- model$N[g] - model$N.survive[g]
+    }
+    
+    model[[target]] <<- rbeta(1,1+n.survive,1+n.die)
+    model$calculate(calcNodes)
+    copy(from=model,to=mvSaved,row=1,nodes=calcNodes,logProb=TRUE)
+  },
+  methods=list(reset=function(){})
+)

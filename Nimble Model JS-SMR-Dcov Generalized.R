@@ -84,8 +84,14 @@ NimModel <- nimbleCode({
     }
   }
   #sighting process
+  log.lam0.int ~ dnorm(0,sd=2)
+  for(g in 1:(n.sight.g-1)){
+    log.lam0.dev[g] ~ dnorm(0,sd=2)
+  }
+  log.lam0.dev[n.sight.g] <- -sum(log.lam0.dev[1:(n.sight.g-1)])
   for(g in 1:n.sight.g){
-    lam0[g] ~ dunif(0,5) #lam0 varies by primary occasion
+    # lam0[g] ~ dunif(0,5) #lam0 varies by primary occasion
+    lam0[g] <- exp(log.lam0.int + log.lam0.dev[g])
     for(i in 1:M){
       lam[i,sight.g[g],
           1:J.sight[sight.g[g]]] <- GetDetectionRate(s=s[i,1:2],
