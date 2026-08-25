@@ -16,6 +16,7 @@ cols1 <- brewer.pal(9,"Greens")
 n.primary <- 6 #number of primary occasions
 phi <- rep(0.8,n.primary-1) #per-capita recruitment by primary occasion
 gamma <- rep(0.2,n.primary-1) #per-capita recruitment by primary occasion
+tau <- rep(1,n.primary-1) #duration of each primary-occasion interval
 p0 <- rep(0.25,n.primary) #marking process p0
 lam0 <- rep(0.25,n.primary) #sighting process lam0
 sigma <- rep(0.5,n.primary) #detection function scale by primary occasion
@@ -171,7 +172,7 @@ mark.protocol <- 2
 
 # simulate some data
 set.seed(390297) #change seed for new data set
-data <- sim.JS.SMR.Dcov.mobileAC.Generalized(D.beta0=D.beta0,D.beta1=D.beta1,D.cov=D.cov,
+data <- sim.JS.SMR.Dcov.mobileAC.Generalized(D.beta0=D.beta0,D.beta1=D.beta1,D.cov=D.cov,tau=tau,
                                              InSS=InSS,phi=phi,gamma=gamma,n.primary=n.primary,
                                              theta.marked=theta.marked,theta.unmarked=theta.unmarked,
                                              p0=p0,lam0=lam0,sigma=sigma,sigma.move=sigma.move,rsf.beta=rsf.beta,
@@ -430,7 +431,7 @@ n.sight.g <- length(sight.g)
 #might want to center D.cov here. Simulated D.cov in this testscript is already effectively centered.
 constants <- list(n.primary=n.primary,M=M,J.mark=J.mark,J.sight=J.sight,
                   K1D.mark=nimbuild$K1D.mark,K1D.sight=nimbuild$K1D.sight,
-                  D.cov=D.cov,
+                  D.cov=D.cov,tau=data$tau,
                   n.marked.all=nimbuild$n.marked.all,
                   n.tel.sessions=data$n.tel.sessions,tel.session=data$tel.session,max.n.tel.locs=max.n.tel.locs,
                   tel.ID=data$tel.ID,n.tel.inds=data$n.tel.inds,n.locs.ind=data$n.locs.ind,
@@ -599,7 +600,6 @@ for(i in 1:M){
 #optional gap-jumper activity center sampler
 #3) z.super=1, either z state, "gap jumper" to better jump across state space gaps
 #proposal sigma is sigma.move*jump.multiplier so it scales with sigma.move.
-#sig.move.fixed=TRUE for shared parameter, FALSE for individual-specific
 # for(i in 1:M){
 #   for(g in 1:n.primary){
 #     s.target <- paste0("s[",i,",",g,",1:2]")
@@ -661,7 +661,7 @@ for(i in 1:M){
 #     conf$addSampler(target=s.target,
 #                     type='sSampler3',
 #                     control=list(i=i,g=g,xlim=xlim,ylim=ylim,jump.multiplier=2,
-#                                  sig.move.fixed=TRUE,J.mark=J.mark,J.sight=J.sight,
+#                                  J.mark=J.mark,J.sight=J.sight,
 #                                  n.marked.all=nimbuild$n.marked.all,mark.states=nimbuild$mark.states[i,],
 #                                  s.nodes=s.nodes,pd.nodes=pd.nodes,lam.nodes=lam.nodes,y.mark.nodes=y.mark.nodes,
 #                                  y.mID.nodes=y.mID.nodes,y.mnoID.nodes=y.mnoID.nodes,y.um.nodes=y.um.nodes,
@@ -687,11 +687,11 @@ for(i in 1:M){
 # for(g in 1:(n.primary-1)){
 #   target <- paste0("gamma[",g,"]")
 #   conf$removeSamplers(target)
-#   conf$addSampler(target=target,type=truncGammaPoisSampler)
+#   conf$addSampler(target=target,type=truncGammaPoisSampler,control=list(tau=data$tau))
 # }
-# #if gamma is fixed
+#if gamma is fixed
 conf$removeSamplers("gamma")
-conf$addSampler(target="gamma",type=truncGammaPoisSampler)
+conf$addSampler(target="gamma",type=truncGammaPoisSampler,control=list(tau=data$tau))
 
 conf$addSampler(target = c("D0","D.beta1"),
                 type = 'AF_slice',control=list(adaptive=TRUE),silent = TRUE)

@@ -13,7 +13,7 @@ rtruncpois <- function(n,lambda,lower=0,upper=Inf){
 
 sim.JS.SMR.Dcov.Generalized.Interspersed.TrapRE <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
                                                             phi=NA,gamma=NA,n.primary=NA,K.order=NA,
-                                                            theta.marked=NA,theta.unmarked=NA,
+                                                            theta.marked=NA,theta.unmarked=NA,tau=NA,
                                                             K.mark=NA,K.sight=NA,K1D.mark=NA,K2D.sight=NA,
                                                             p0=NA,lam0=NA,sigma=NA,theta.d=NA,
                                                             X.mark=NA,X.sight=NA,buff=buff,xlim=NA,
@@ -136,7 +136,7 @@ sim.JS.SMR.Dcov.Generalized.Interspersed.TrapRE <- function(D.beta0=NA,D.beta1=N
   z[1:N[1],1] <- 1
   for(g in 2:n.primary){
     #Simulate recruits
-    ER[g-1] <- N[g-1]*gamma[g-1]
+    ER[g-1] <- N[g-1]*gamma[g-1]*tau[g-1]
     N.recruit[g-1] <- rpois(1,ER[g-1])
     if(N.recruit[g-1]>0){
       #add recruits to z
@@ -145,8 +145,9 @@ sim.JS.SMR.Dcov.Generalized.Interspersed.TrapRE <- function(D.beta0=NA,D.beta1=N
       z[(z.dim.old+1):(z.dim.old+N.recruit[g-1]),g] <- 1
     }
     #Simulate survival
+    phi.int <- phi[g-1]^tau[g-1]
     idx <- which(z[,g-1]==1)
-    z[idx,g] <- rbinom(length(idx),1,phi[g-1])
+    z[idx,g] <- rbinom(length(idx),1,phi.int)
     N.survive[g-1] <- sum(z[,g-1]==1&z[,g]==1)
     N[g] <- N.recruit[g-1]+N.survive[g-1]
   }
@@ -456,7 +457,7 @@ sim.JS.SMR.Dcov.Generalized.Interspersed.TrapRE <- function(D.beta0=NA,D.beta1=N
   return(list(y.mark=y.mark,y.mID=y.mID,y.mnoID=y.mnoID,y.um=y.um,y.unk=y.unk, #observed data
               n.primary=n.primary,n.marked=n.marked,n.marked.all=n.marked.all,
               locs=locs,n.tel.inds=n.tel.inds,n.tel.sessions=n.tel.sessions,tel.session=tel.session,
-              n.locs.ind=n.locs.ind,tel.ID=tel.ID,tel.ID.g=tel.ID.g,
+              n.locs.ind=n.locs.ind,tel.ID=tel.ID,tel.ID.g=tel.ID.g,tau=tau,
               ID.marked=ID.marked,ID.marked.all=ID.marked.all,
               mark.states2D=mark.states2D,mark.states=mark.states,tel.z.states=tel.z.states,
               ID.cap.all=ID.cap.all,n.cap.all=n.cap.all,mark.deploy=mark.deploy,mark.caps=mark.caps,

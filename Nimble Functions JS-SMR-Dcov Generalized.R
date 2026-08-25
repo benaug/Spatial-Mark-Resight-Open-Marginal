@@ -1436,28 +1436,39 @@ truncGammaPoisSampler <- nimbleFunction(
   setup = function(model,mvSaved,target,control){
     calcNodes <- model$getDependencies(target)
     upper <- model$getBound(target,"upper")
-    if(target=="gamma"){
+    tau <- control$tau
+    if(target=="lambda.y1"){
+      is.lambda <- TRUE
+      is.fixed.gamma <- FALSE
+      g <- 1
+      n.recruit <- 1
+    }else if(target=="gamma"){
+      is.lambda <- FALSE
       is.fixed.gamma <- TRUE
       g <- 1
       recruitNodes <- grep("^N.recruit\\[",model$getNodeNames(stochOnly=TRUE),value=TRUE)
       n.recruit <- length(recruitNodes)
     }else{
+      is.lambda <- FALSE
       is.fixed.gamma <- FALSE
       g <- as.integer(gsub("[^0-9]","",target))
       n.recruit <- 1
     }
   },
   run = function(){
-    if(is.fixed.gamma){
+    if(is.lambda){
+      count <- model$N[1]
+      rate <- 1
+    }else if(is.fixed.gamma){
       count <- 0
       rate <- 0
       for(j in 1:n.recruit){
         count <- count+model$N.recruit[j]
-        rate <- rate+model$N[j]
+        rate <- rate+model$N[j]*tau[j]
       }
     }else{
       count <- model$N.recruit[g]
-      rate <- model$N[g]
+      rate <- model$N[g]*tau[g]
     }
     if(rate>0){
       shape <- count+1
@@ -1466,41 +1477,6 @@ truncGammaPoisSampler <- nimbleFunction(
     }else{
       model[[target]] <<- runif(1,0,upper)
     }
-    model$calculate(calcNodes)
-    copy(from=model,to=mvSaved,row=1,nodes=calcNodes,logProb=TRUE)
-  },
-  methods=list(reset=function(){})
-)
-
-phiGibbsSampler <- nimbleFunction(
-  contains=sampler_BASE,
-  setup=function(model,mvSaved,target,control){
-    calcNodes <- model$getDependencies(target)
-    if(target=="phi.fixed"){
-      is.fixed.phi <- TRUE
-      g <- 1
-      surviveNodes <- grep("^N.survive\\[",model$getNodeNames(stochOnly=FALSE),value=TRUE)
-      n.trans <- length(surviveNodes)
-    }else{
-      is.fixed.phi <- FALSE
-      g <- as.integer(gsub("[^0-9]","",target))
-      n.trans <- 1
-    }
-  },
-  run=function(){
-    if(is.fixed.phi){
-      n.survive <- 0
-      n.die <- 0
-      for(j in 1:n.trans){
-        n.survive <- n.survive + model$N.survive[j]
-        n.die <- n.die + model$N[j] - model$N.survive[j]
-      }
-    }else{
-      n.survive <- model$N.survive[g]
-      n.die <- model$N[g] - model$N.survive[g]
-    }
-    
-    model[[target]] <<- rbeta(1,1+n.survive,1+n.die)
     model$calculate(calcNodes)
     copy(from=model,to=mvSaved,row=1,nodes=calcNodes,logProb=TRUE)
   },

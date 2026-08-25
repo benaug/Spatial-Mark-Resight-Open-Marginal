@@ -22,9 +22,9 @@ NimModel <- nimbleCode({
   #Recruitment
   gamma ~ dunif(0,2) #fixed recruitment parameter
   for(g in 1:(n.primary-1)){
-    ER[g] <- N[g]*gamma #expected recruits, if gamma fixed
     # gamma[g] ~ dunif(0,2) #recruitment priors by primary occasion
-    # ER[g] <- N[g]*gamma[g] #expected recruits, if gamma 
+    # ER[g] <- N[g]*gamma[g]*tau[g] #expected recruits, variable gamma
+    ER[g] <- N[g]*gamma*tau[g] #expected recruits, if gamma fixed
     N.recruit[g] ~ dpois(ER[g]) #realized recruits
   }
   
@@ -42,7 +42,7 @@ NimModel <- nimbleCode({
   phi.fixed ~ dunif(0,1)
   for(i in 1:M){
     for(g in 1:(n.primary-1)){ #plugging same individual phi's into each primary occasion for custom update
-      phi[i,g] <- phi.fixed
+      phi[i,g] <- phi.fixed^tau[g]
     }
     #survival likelihood (bernoulli) that only sums from z.start to z.stop
     z[i,1:n.primary] ~ dSurvival(phi=phi[i,1:(n.primary-1)],z.start=z.start[i],z.stop=z.stop[i],z.super=z.super[i])
@@ -84,14 +84,8 @@ NimModel <- nimbleCode({
     }
   }
   #sighting process
-  log.lam0.int ~ dnorm(0,sd=2)
-  for(g in 1:(n.sight.g-1)){
-    log.lam0.dev[g] ~ dnorm(0,sd=2)
-  }
-  log.lam0.dev[n.sight.g] <- -sum(log.lam0.dev[1:(n.sight.g-1)])
   for(g in 1:n.sight.g){
-    # lam0[g] ~ dunif(0,5) #lam0 varies by primary occasion
-    lam0[g] <- exp(log.lam0.int + log.lam0.dev[g])
+    lam0[g] ~ dunif(0,5) #lam0tau <- rep(1,n.primary-1) #duration of each primary-occasion interval varies by primary occasion
     for(i in 1:M){
       lam[i,sight.g[g],
           1:J.sight[sight.g[g]]] <- GetDetectionRate(s=s[i,1:2],

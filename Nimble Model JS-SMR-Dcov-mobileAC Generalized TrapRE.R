@@ -22,26 +22,29 @@ NimModel <- nimbleCode({
   #Recruitment
   gamma ~ dunif(0,2) #fixed recruitment parameter
   for(g in 1:(n.primary-1)){
-    ER[g] <- N[g]*gamma #expected recruits, if gamma fixed
     # gamma[g] ~ dunif(0,2) #recruitment priors by primary occasion
-    # ER[g] <- N[g]*gamma[g] #expected recruits, if gamma 
+    # ER[g] <- N[g]*gamma[g]*tau[g] #expected recruits, variable gamma
+    ER[g] <- N[g]*gamma*tau[g] #expected recruits, if gamma fixed
     N.recruit[g] ~ dpois(ER[g]) #realized recruits
   }
   
   #Mobile activity centers
   rsf.beta ~ dnorm(0,sd=10)
   sigma.move ~ dunif(0,100)
+  for(g in 1:(n.primary-1)){#time scaled sigma move
+    sigma.move.int[g] <- sigma.move*sqrt(tau[g])
+  }
   rsf[1:n.cells] <- InSS[1:n.cells]*exp(rsf.beta*D.cov[1:n.cells])
   for(i in 1:M){
     s[i,1,1:2] ~ dHab1(pi.cell=pi.cell[1:n.cells],cells=cells[1:n.cells.x,1:n.cells.y],res=res,dSS=dSS[1:n.cells,1:2],
                            xlim=xlim[1:2],ylim=ylim[1:2],z.super=z.super[i])
     for(g in 2:n.primary){
-      avail.dist[i,g-1,1:n.cells] <- getAvail(s=s[i,g-1,1:2],sigma=sigma.move,res=res,
+      avail.dist[i,g-1,1:n.cells] <- getAvail(s=s[i,g-1,1:2],sigma=sigma.move.int[g-1],res=res,
                                               x.vals=x.vals[1:n.cells.x],y.vals=y.vals[1:n.cells.y],
                                               n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=z.super[i])
       use.dist[i,g-1,1:n.cells] <- getUse(rsf=rsf[1:n.cells],avail.dist=avail.dist[i,g-1,1:n.cells],z.super=z.super[i])
       s[i,g,1:2] ~ dHabMove(s.prev=s[i,g-1,1:2],use.dist=use.dist[i,g-1,1:n.cells],dSS=dSS[1:n.cells,1:2],
-                            cells=cells[1:n.cells.x,1:n.cells.y],res=res,sigma.move=sigma.move,z.super=z.super[i])
+                            cells=cells[1:n.cells.x,1:n.cells.y],res=res,sigma.move=sigma.move.int[g-1],z.super=z.super[i])
     }
   }
   
@@ -50,7 +53,7 @@ NimModel <- nimbleCode({
   phi.fixed ~ dunif(0,1)
   for(i in 1:M){
     for(g in 1:(n.primary-1)){ #plugging same individual phi's into each primary occasion for custom update
-      phi[i,g] <- phi.fixed
+      phi[i,g] <- phi.fixed^tau[g]
     }
     #survival likelihood (bernoulli) that only sums from z.start to z.stop
     z[i,1:n.primary] ~ dSurvival(phi=phi[i,1:(n.primary-1)],z.start=z.start[i],z.stop=z.stop[i],z.super=z.super[i])

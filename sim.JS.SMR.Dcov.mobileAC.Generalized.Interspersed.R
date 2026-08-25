@@ -12,7 +12,7 @@ rtruncpois <- function(n,lambda,lower=0,upper=Inf){
 }
 
 sim.JS.SMR.Dcov.mobileAC.Generalized.Interspersed <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
-                                                              phi=NA,gamma=NA,n.primary=NA,
+                                                              phi=NA,gamma=NA,n.primary=NA,tau=NA,
                                                               theta.marked=NA,theta.unmarked=NA,
                                                               K.mark=NA,K.sight=NA,K1D.mark=NA,K2D.sight=NA,K.order=NA,
                                                               p0=NA,lam0=NA,sigma=NA,sigma.move=NA,rsf.beta=NA,
@@ -127,7 +127,7 @@ sim.JS.SMR.Dcov.mobileAC.Generalized.Interspersed <- function(D.beta0=NA,D.beta1
   z[1:N[1],1] <- 1
   for(g in 2:n.primary){
     #Simulate recruits
-    ER[g-1] <- N[g-1]*gamma[g-1]
+    ER[g-1] <- N[g-1]*gamma[g-1]*tau[g-1]
     N.recruit[g-1] <- rpois(1,ER[g-1])
     if(N.recruit[g-1]>0){
       #add recruits to z
@@ -136,8 +136,9 @@ sim.JS.SMR.Dcov.mobileAC.Generalized.Interspersed <- function(D.beta0=NA,D.beta1
       z[(z.dim.old+1):(z.dim.old+N.recruit[g-1]),g] <- 1
     }
     #Simulate survival
+    phi.int <- phi[g-1]^tau[g-1]
     idx <- which(z[,g-1]==1)
-    z[idx,g] <- rbinom(length(idx),1,phi[g-1])
+    z[idx,g] <- rbinom(length(idx),1,phi.int)
     N.survive[g-1] <- sum(z[,g-1]==1&z[,g]==1)
     N[g] <- N.recruit[g-1]+N.survive[g-1]
   }
@@ -174,8 +175,9 @@ sim.JS.SMR.Dcov.mobileAC.Generalized.Interspersed <- function(D.beta0=NA,D.beta1
   rsf <- exp(rsf.beta*D.cov)
   rsf[InSS==0] <- 0 #disallow individuals moving into nonhabitat
   for(g in 2:n.primary){
+    sigma.move.int <- sigma.move*sqrt(tau[g-1])
     for(i in 1:N.super){
-      avail.dist[i,g-1,] <- getAvail(s=s[i,g-1,1:2],sigma=sigma.move,res=res,x.vals=x.vals,
+      avail.dist[i,g-1,] <- getAvail(s=s[i,g-1,1:2],sigma=sigma.move.int,res=res,x.vals=x.vals,
                                      y.vals=y.vals,n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
       use.dist[i,g-1,] <- rsf*avail.dist[i,g-1,]
       use.dist[i,g-1,] <- use.dist[i,g-1,]/sum(use.dist[i,g-1,])
@@ -185,8 +187,8 @@ sim.JS.SMR.Dcov.mobileAC.Generalized.Interspersed <- function(D.beta0=NA,D.beta1
       s.xlim <- dSS[s.cell[i,g],1] + c(-res,res)/2
       s.ylim <- dSS[s.cell[i,g],2] + c(-res,res)/2
       #choose new location inside cell
-      s[i,g,1] <- rtruncnorm(1,a=s.xlim[1],b=s.xlim[2],mean=s[i,g-1,1],sd=sigma.move)
-      s[i,g,2] <- rtruncnorm(1,a=s.ylim[1],b=s.ylim[2],mean=s[i,g-1,2],sd=sigma.move)
+      s[i,g,1] <- rtruncnorm(1,a=s.xlim[1],b=s.xlim[2],mean=s[i,g-1,1],sd=sigma.move.int)
+      s[i,g,2] <- rtruncnorm(1,a=s.ylim[1],b=s.ylim[2],mean=s[i,g-1,2],sd=sigma.move.int)
     }
   }
   
@@ -461,7 +463,7 @@ sim.JS.SMR.Dcov.mobileAC.Generalized.Interspersed <- function(D.beta0=NA,D.beta1
   return(list(y.mark=y.mark,y.mID=y.mID,y.mnoID=y.mnoID,y.um=y.um,y.unk=y.unk,
               n.primary=n.primary,n.marked=n.marked,n.marked.all=n.marked.all,
               locs=locs,n.tel.inds=n.tel.inds,n.tel.sessions=n.tel.sessions,tel.session=tel.session,
-              n.locs.ind=n.locs.ind,tel.ID=tel.ID,tel.ID.g=tel.ID.g,
+              n.locs.ind=n.locs.ind,tel.ID=tel.ID,tel.ID.g=tel.ID.g,tau=tau,
               ID.marked=ID.marked,ID.marked.all=ID.marked.all,
               mark.states2D=mark.states2D,mark.states=mark.states,tel.z.states=tel.z.states,
               mark.start.global=mark.start.global,

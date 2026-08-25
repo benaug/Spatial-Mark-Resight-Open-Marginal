@@ -62,6 +62,10 @@ init.SMR.Dcov.mobileAC.Open.Generalized <- function(data,inits=NA,M=NA){
   sigma.move.init <- inits$sigma.move
   rsf.beta.init <- inits$rsf.beta
   D.beta1.init <- inits$D.beta1
+  
+  tau <- data$tau
+  sigma.move.int <- sigma.move.init*sqrt(tau)
+  
   e2dist <- function(x,y){
     i <- sort(rep(1:nrow(y),nrow(x)))
     dvec <- sqrt((x[,1]-y[i,1])^2 + (x[,2]-y[i,2])^2)
@@ -148,7 +152,7 @@ init.SMR.Dcov.mobileAC.Open.Generalized <- function(data,inits=NA,M=NA){
       #simulate backwards from first detection
       if(first.det>1){
         for(g in (first.det-1):1){
-          avail <- getAvail(s=s.pre[i,g+1,],sigma=sigma.move.init,res=data$res,
+          avail <- getAvail(s=s.pre[i,g+1,],sigma=sigma.move.int[g],res=data$res,
                             x.vals=data$x.vals,y.vals=data$y.vals,
                             n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
           use <- getUse(rsf=rsf,avail.dist=avail,z.super=1)
@@ -160,7 +164,7 @@ init.SMR.Dcov.mobileAC.Open.Generalized <- function(data,inits=NA,M=NA){
       #simulate forwards from last detection
       if(last.det<n.primary){
         for(g in (last.det+1):n.primary){
-          avail <- getAvail(s=s.pre[i,g-1,],sigma=sigma.move.init,res=data$res,
+          avail <- getAvail(s=s.pre[i,g-1,],sigma=sigma.move.int[g-1],res=data$res,
                             x.vals=data$x.vals,y.vals=data$y.vals,
                             n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
           use <- getUse(rsf=rsf,avail.dist=avail,z.super=1)
@@ -173,7 +177,7 @@ init.SMR.Dcov.mobileAC.Open.Generalized <- function(data,inits=NA,M=NA){
       if(last.det>first.det){
         for(g in first.det:(last.det-1)){
           if(!(g+1)%in%dets){
-            avail <- getAvail(s=s.pre[i,g,],sigma=sigma.move.init,res=data$res,
+            avail <- getAvail(s=s.pre[i,g,],sigma=sigma.move.int[g],res=data$res,
                               x.vals=data$x.vals,y.vals=data$y.vals,
                               n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
             use <- getUse(rsf=rsf,avail.dist=avail,z.super=1)
@@ -189,7 +193,7 @@ init.SMR.Dcov.mobileAC.Open.Generalized <- function(data,inits=NA,M=NA){
       s.pre[i,1,1] <- runif(1,data$dSS[s.cell,1] - data$res/2,data$dSS[s.cell,1] + data$res/2)
       s.pre[i,1,2] <- runif(1,data$dSS[s.cell,2] - data$res/2,data$dSS[s.cell,2] + data$res/2)
       for(g in 2:n.primary){
-        avail <- getAvail(s=s.pre[i,g-1,],sigma=sigma.move.init,res=data$res,
+        avail <- getAvail(s=s.pre[i,g-1,],sigma=sigma.move.int[g-1],res=data$res,
                           x.vals=data$x.vals,y.vals=data$y.vals,
                           n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
         use <- getUse(rsf=rsf,avail.dist=avail,z.super=1)
@@ -199,7 +203,7 @@ init.SMR.Dcov.mobileAC.Open.Generalized <- function(data,inits=NA,M=NA){
       }
     }
     for(g in 2:n.primary){
-      avail.dist.pre[i,g-1,] <- getAvail(s=s.pre[i,g-1,1:2],sigma=sigma.move.init,res=data$res,
+      avail.dist.pre[i,g-1,] <- getAvail(s=s.pre[i,g-1,1:2],sigma=sigma.move.int[g-1],res=data$res,
                                          x.vals=data$x.vals,y.vals=data$y.vals,
                                          n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
       use.dist.pre[i,g-1,] <- getUse(rsf=rsf,avail.dist=avail.dist.pre[i,g-1,],z.super=1)
@@ -314,7 +318,7 @@ init.SMR.Dcov.mobileAC.Open.Generalized <- function(data,inits=NA,M=NA){
       #simulate backwards from first detection
       if(first.det>1){
         for(g in (first.det-1):1){
-          avail <- getAvail(s=s.init[i,g+1,],sigma=sigma.move.init,res=data$res,
+          avail <- getAvail(s=s.init[i,g+1,],sigma=sigma.move.int[g],res=data$res,
                             x.vals=data$x.vals,y.vals=data$y.vals,
                             n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
           use <- getUse(rsf=rsf,avail.dist=avail,z.super=1)
@@ -326,7 +330,7 @@ init.SMR.Dcov.mobileAC.Open.Generalized <- function(data,inits=NA,M=NA){
       #simulate forwards from last detection
       if(last.det<n.primary){
         for(g in (last.det+1):n.primary){
-          avail <- getAvail(s=s.init[i,g-1,],sigma=sigma.move.init,res=data$res,
+          avail <- getAvail(s=s.init[i,g-1,],sigma=sigma.move.int[g-1],res=data$res,
                             x.vals=data$x.vals,y.vals=data$y.vals,
                             n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
           use <- getUse(rsf=rsf,avail.dist=avail,z.super=1)
@@ -339,7 +343,7 @@ init.SMR.Dcov.mobileAC.Open.Generalized <- function(data,inits=NA,M=NA){
       if(last.det>first.det){
         for(g in first.det:(last.det-1)){
           if(!(g+1)%in%dets){
-            avail <- getAvail(s=s.init[i,g,],sigma=sigma.move.init,res=data$res,
+            avail <- getAvail(s=s.init[i,g,],sigma=sigma.move.int[g],res=data$res,
                               x.vals=data$x.vals,y.vals=data$y.vals,
                               n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
             use <- getUse(rsf=rsf,avail.dist=avail,z.super=1)
@@ -355,7 +359,7 @@ init.SMR.Dcov.mobileAC.Open.Generalized <- function(data,inits=NA,M=NA){
       s.init[i,1,1] <- runif(1,data$dSS[s.cell,1] - data$res/2,data$dSS[s.cell,1] + data$res/2)
       s.init[i,1,2] <- runif(1,data$dSS[s.cell,2] - data$res/2,data$dSS[s.cell,2] + data$res/2)
       for(g in 2:n.primary){
-        avail <- getAvail(s=s.init[i,g-1,],sigma=sigma.move.init,res=data$res,
+        avail <- getAvail(s=s.init[i,g-1,],sigma=sigma.move.int[g-1],res=data$res,
                           x.vals=data$x.vals,y.vals=data$y.vals,
                           n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
         use <- getUse(rsf=rsf,avail.dist=avail,z.super=1)
@@ -365,7 +369,7 @@ init.SMR.Dcov.mobileAC.Open.Generalized <- function(data,inits=NA,M=NA){
       }
     }
     for(g in 2:n.primary){
-      avail.dist.init[i,g-1,] <- getAvail(s=s.init[i,g-1,1:2],sigma=sigma.move.init,res=data$res,
+      avail.dist.init[i,g-1,] <- getAvail(s=s.init[i,g-1,1:2],sigma=sigma.move.int[g-1],res=data$res,
                                           x.vals=data$x.vals,y.vals=data$y.vals,
                                           n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
       use.dist.init[i,g-1,] <- getUse(rsf=rsf,avail.dist=avail.dist.init[i,g-1,],z.super=1)
@@ -379,7 +383,7 @@ init.SMR.Dcov.mobileAC.Open.Generalized <- function(data,inits=NA,M=NA){
         logProb[i,g-1] <- dHabMove(x=s.init[i,g,1:2],s.prev=s.init[i,g-1,1:2],
                                    use.dist=use.dist.init[i,g-1,1:n.cells],
                                    dSS=data$dSS[1:n.cells,1:2],cells=data$cells[1:n.cells.x,1:n.cells.y],
-                                   res=data$res,sigma.move=sigma.move.init,z.super=1,log=TRUE)
+                                   res=data$res,sigma.move=sigma.move.int[g-1],z.super=1,log=TRUE)
       }
     }
   }
