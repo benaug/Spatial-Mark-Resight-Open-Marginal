@@ -12,7 +12,7 @@ rtruncpois <- function(n,lambda,lower=0,upper=Inf){
 }
 
 sim.JS.SMR.Dcov.mobileAC.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
-                                                 phi=NA,gamma=NA,n.primary=NA,tau=NA,
+                                                 phi=NA,gamma=NA,n.primary=NA,tau=NA,tau.move=NA,
                                                  theta.marked=NA,theta.unmarked=NA,
                                                  K.mark=NA,K.sight=NA,K1D.mark=NA,K1D.sight=NA,
                                                  p0=NA,lam0=NA,sigma=NA,sigma.move=NA,rsf.beta=NA,
@@ -144,7 +144,7 @@ sim.JS.SMR.Dcov.mobileAC.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,
   rsf <- exp(rsf.beta*D.cov)
   rsf[InSS==0] <- 0 #disallow individuals moving into nonhabitat
   for(g in 2:n.primary){
-    sigma.move.int <- sigma.move*sqrt(tau[g-1])
+    sigma.move.int <- sigma.move*sqrt(tau.move[g-1])
     for(i in 1:N.super){
       avail.dist[i,g-1,] <- getAvail(s=s[i,g-1,1:2],sigma=sigma.move.int,res=res,x.vals=x.vals,
                                      y.vals=y.vals,n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
@@ -415,7 +415,7 @@ sim.JS.SMR.Dcov.mobileAC.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,
               n.primary=n.primary,n.marked=n.marked,n.marked.all=n.marked.all,
               ID.cap.all=ID.cap.all,n.cap.all=n.cap.all,mark.deploy=mark.deploy,mark.caps=mark.caps,
               locs=locs,n.tel.inds=n.tel.inds,n.tel.sessions=n.tel.sessions,tel.session=tel.session,
-              n.locs.ind=n.locs.ind,tel.ID=tel.ID,tel.ID.g=tel.ID.g,tau=tau,
+              n.locs.ind=n.locs.ind,tel.ID=tel.ID,tel.ID.g=tel.ID.g,tau=tau,tau.move=tau.move,
               ID.marked=ID.marked,ID.marked.all=ID.marked.all,
               mark.states=mark.states,tel.z.states=tel.z.states,
               N=N,N.recruit=N.recruit,N.survive=N.survive,N.super=N.super,X.mark=X.mark,X.sight=X.sight,

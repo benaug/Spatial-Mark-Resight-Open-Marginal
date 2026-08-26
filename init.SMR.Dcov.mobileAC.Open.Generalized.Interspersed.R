@@ -65,8 +65,8 @@ init.SMR.Dcov.mobileAC.Open.Generalized.Interspersed <- function(data,inits=NA,M
   rsf.beta.init <- inits$rsf.beta
   D.beta1.init <- inits$D.beta1
   
-  tau <- data$tau
-  sigma.move.int <- sigma.move.init*sqrt(tau)
+  tau.move <- data$tau.move
+  sigma.move.int <- sigma.move.init*sqrt(tau.move)
   
   e2dist <- function(x,y){
     i <- sort(rep(1:nrow(y),nrow(x)))

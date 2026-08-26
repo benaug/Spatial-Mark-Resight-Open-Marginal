@@ -32,7 +32,7 @@ NimModel <- nimbleCode({
   rsf.beta ~ dnorm(0,sd=10)
   sigma.move ~ dunif(0,100)
   for(g in 1:(n.primary-1)){#time scaled sigma move
-    sigma.move.int[g] <- sigma.move*sqrt(tau[g])
+    sigma.move.int[g] <- sigma.move*sqrt(tau.move[g])
   }
   rsf[1:n.cells] <- InSS[1:n.cells]*exp(rsf.beta*D.cov[1:n.cells])
   for(i in 1:M){
