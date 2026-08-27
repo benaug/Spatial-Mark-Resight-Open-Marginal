@@ -7,6 +7,8 @@ sSamplerDcov <- nimbleFunction(
     J.sight <- control$J.sight
     sight.g <- control$sight.g
     n.sight.g <- control$n.sight.g
+    mark.g <- which(J.mark>0)
+    n.mark.g <- length(mark.g)
     res <- control$res
     xlim <- control$xlim
     ylim <- control$ylim
@@ -92,13 +94,49 @@ sSamplerDcov <- nimbleFunction(
       if(inbox){
         #get initial logprobs - not optimizing by considering if this is marked or unmarked i
         lp.initial.s <- model$getLogProb(s.nodes)
-        lp.initial.y.mark <- model$getLogProb(y.mark.nodes)
-        lp.initial.y.unk <- model$getLogProb(y.unk.nodes)
-        lp.initial.y.um <- model$getLogProb(y.um.nodes)
-        lp.initial.trap.RE <- model$getLogProb(trap.RE.nodes)
+        #old code got observation logProbs over all sampled primary occasions
+        # lp.initial.y.mark <- model$getLogProb(y.mark.nodes)
+        # lp.initial.y.unk <- model$getLogProb(y.unk.nodes)
+        # lp.initial.y.um <- model$getLogProb(y.um.nodes)
+        # lp.initial.trap.RE <- model$getLogProb(trap.RE.nodes)
+        #only observation likelihoods in sampled primary occasions where this individual is alive can change
+        lp.initial.y.mark <- 0
+        if(n.mark.g>0){
+          for(g2 in 1:n.mark.g){
+            g <- mark.g[g2]
+            if(model$z[i,g]==1){
+              lp.initial.y.mark <- lp.initial.y.mark+model$getLogProb(y.mark.nodes[g2])
+            }
+          }
+        }
+        lp.initial.y.unk <- 0
+        lp.initial.y.um <- 0
+        lp.initial.trap.RE <- 0
+        if(n.sight.g>0){
+          for(g2 in 1:n.sight.g){
+            g <- sight.g[g2]
+            if(model$z[i,g]==1){
+              lp.initial.y.unk <- lp.initial.y.unk+model$getLogProb(y.unk.nodes[g2])
+              lp.initial.y.um <- lp.initial.y.um+model$getLogProb(y.um.nodes[g2])
+              lp.initial.trap.RE <- lp.initial.trap.RE+model$getLogProb(trap.RE.nodes[g2])
+            }
+          }
+        }
         if(i<=n.marked.all){ #if marked in at least one year
-          lp.initial.y.mID <- model$getLogProb(y.mID.nodes)
-          lp.initial.y.mnoID <- model$getLogProb(y.mnoID.nodes)
+          #old code got observation logProbs over all sighting primary occasions
+          # lp.initial.y.mID <- model$getLogProb(y.mID.nodes)
+          # lp.initial.y.mnoID <- model$getLogProb(y.mnoID.nodes)
+          lp.initial.y.mID <- 0
+          lp.initial.y.mnoID <- 0
+          if(n.sight.g>0){
+            for(g2 in 1:n.sight.g){
+              g <- sight.g[g2]
+              if(model$z[i,g]==1){
+                lp.initial.y.mID <- lp.initial.y.mID+model$getLogProb(y.mID.nodes[g2])
+                lp.initial.y.mnoID <- lp.initial.y.mnoID+model$getLogProb(y.mnoID.nodes[g2])
+              }
+            }
+          }
           #pull these out of model object
           bigLam.marked.initial <- model$bigLam.marked
           bigLam.unmarked.initial <- model$bigLam.unmarked
@@ -146,8 +184,26 @@ sSamplerDcov <- nimbleFunction(
               }
             }
           }
-          model$calculate(pd.nodes) #update pd nodes
-          model$calculate(lam.nodes) #update lam nodes
+          #old code updated focal detection nodes over all sampled primary occasions
+          # model$calculate(pd.nodes) #update pd nodes
+          # model$calculate(lam.nodes) #update lam nodes
+          #only focal detection nodes in sampled primary occasions where this individual is alive can change
+          if(n.mark.g>0){
+            for(g2 in 1:n.mark.g){
+              g <- mark.g[g2]
+              if(model$z[i,g]==1){
+                model$calculate(pd.nodes[g2])
+              }
+            }
+          }
+          if(n.sight.g>0){
+            for(g2 in 1:n.sight.g){
+              g <- sight.g[g2]
+              if(model$z[i,g]==1){
+                model$calculate(lam.nodes[g2])
+              }
+            }
+          }
           #add these in after calculating lam
           for(g2 in 1:n.sight.g){
             g <- sight.g[g2]
@@ -159,15 +215,53 @@ sSamplerDcov <- nimbleFunction(
           #put bigLam.marked in model object
           model$bigLam.marked <<- bigLam.marked.proposed
           model$bigLam.unmarked <<- bigLam.unmarked.proposed
-          model$calculate(lam.mnoID.nodes) #update after bigLam
-          model$calculate(lam.um.nodes) #update after bigLam
-          model$calculate(lam.unk.nodes) #update after bigLam
-          lp.proposed.y.mark <- model$calculate(y.mark.nodes)
-          lp.proposed.y.mID <- model$calculate(y.mID.nodes)
-          lp.proposed.y.mnoID <- model$calculate(y.mnoID.nodes)
-          lp.proposed.y.um <- model$calculate(y.um.nodes)
-          lp.proposed.y.unk <- model$calculate(y.unk.nodes)
-          lp.proposed.trap.RE <- model$calculate(trap.RE.nodes)
+          #old code updated aggregate rates and likelihoods over all sampled primary occasions
+          # model$calculate(lam.mnoID.nodes) #update after bigLam
+          # model$calculate(lam.um.nodes) #update after bigLam
+          # model$calculate(lam.unk.nodes) #update after bigLam
+          # lp.proposed.y.mark <- model$calculate(y.mark.nodes)
+          # lp.proposed.y.mID <- model$calculate(y.mID.nodes)
+          # lp.proposed.y.mnoID <- model$calculate(y.mnoID.nodes)
+          # lp.proposed.y.um <- model$calculate(y.um.nodes)
+          # lp.proposed.y.unk <- model$calculate(y.unk.nodes)
+          # lp.proposed.trap.RE <- model$calculate(trap.RE.nodes)
+          #only aggregate rates and observation likelihoods in primary occasions where this individual is alive can change
+          if(n.sight.g>0){
+            for(g2 in 1:n.sight.g){
+              g <- sight.g[g2]
+              if(model$z[i,g]==1){
+                model$calculate(lam.mnoID.nodes[g2])
+                model$calculate(lam.um.nodes[g2])
+                model$calculate(lam.unk.nodes[g2])
+              }
+            }
+          }
+          lp.proposed.y.mark <- 0
+          if(n.mark.g>0){
+            for(g2 in 1:n.mark.g){
+              g <- mark.g[g2]
+              if(model$z[i,g]==1){
+                lp.proposed.y.mark <- lp.proposed.y.mark+model$calculate(y.mark.nodes[g2])
+              }
+            }
+          }
+          lp.proposed.y.mID <- 0
+          lp.proposed.y.mnoID <- 0
+          lp.proposed.y.um <- 0
+          lp.proposed.y.unk <- 0
+          lp.proposed.trap.RE <- 0
+          if(n.sight.g>0){
+            for(g2 in 1:n.sight.g){
+              g <- sight.g[g2]
+              if(model$z[i,g]==1){
+                lp.proposed.y.mID <- lp.proposed.y.mID+model$calculate(y.mID.nodes[g2])
+                lp.proposed.y.mnoID <- lp.proposed.y.mnoID+model$calculate(y.mnoID.nodes[g2])
+                lp.proposed.y.um <- lp.proposed.y.um+model$calculate(y.um.nodes[g2])
+                lp.proposed.y.unk <- lp.proposed.y.unk+model$calculate(y.unk.nodes[g2])
+                lp.proposed.trap.RE <- lp.proposed.trap.RE+model$calculate(trap.RE.nodes[g2])
+              }
+            }
+          }
           lp.initial <- lp.initial.s + lp.initial.y.mark + lp.initial.y.mID + lp.initial.y.mnoID +
             lp.initial.y.um + lp.initial.y.unk + lp.initial.trap.RE 
           lp.proposed <- lp.proposed.s + lp.proposed.y.mark + lp.proposed.y.mID + lp.proposed.y.mnoID +
@@ -201,8 +295,26 @@ sSamplerDcov <- nimbleFunction(
               }
             }
           }
-          model$calculate(pd.nodes) #update pd nodes
-          model$calculate(lam.nodes) #update lam nodes
+          #old code updated focal detection nodes over all sampled primary occasions
+          # model$calculate(pd.nodes) #update pd nodes
+          # model$calculate(lam.nodes) #update lam nodes
+          #only focal detection nodes in sampled primary occasions where this individual is alive can change
+          if(n.mark.g>0){
+            for(g2 in 1:n.mark.g){
+              g <- mark.g[g2]
+              if(model$z[i,g]==1){
+                model$calculate(pd.nodes[g2])
+              }
+            }
+          }
+          if(n.sight.g>0){
+            for(g2 in 1:n.sight.g){
+              g <- sight.g[g2]
+              if(model$z[i,g]==1){
+                model$calculate(lam.nodes[g2])
+              }
+            }
+          }
           #add these in after calculating lam
           for(g2 in 1:n.sight.g){
             g <- sight.g[g2]
@@ -212,12 +324,45 @@ sSamplerDcov <- nimbleFunction(
           }
           #put bigLam in model object
           model$bigLam.unmarked <<- bigLam.unmarked.proposed
-          model$calculate(lam.um.nodes) #update after bigLam
-          model$calculate(lam.unk.nodes) #update after bigLam
-          lp.proposed.y.mark <- model$calculate(y.mark.nodes)
-          lp.proposed.y.um <- model$calculate(y.um.nodes)
-          lp.proposed.y.unk <- model$calculate(y.unk.nodes)
-          lp.proposed.trap.RE <- model$calculate(trap.RE.nodes)
+          #old code updated aggregate rates and likelihoods over all sampled primary occasions
+          # model$calculate(lam.um.nodes) #update after bigLam
+          # model$calculate(lam.unk.nodes) #update after bigLam
+          # lp.proposed.y.mark <- model$calculate(y.mark.nodes)
+          # lp.proposed.y.um <- model$calculate(y.um.nodes)
+          # lp.proposed.y.unk <- model$calculate(y.unk.nodes)
+          # lp.proposed.trap.RE <- model$calculate(trap.RE.nodes)
+          #only aggregate rates and observation likelihoods in primary occasions where this individual is alive can change
+          if(n.sight.g>0){
+            for(g2 in 1:n.sight.g){
+              g <- sight.g[g2]
+              if(model$z[i,g]==1){
+                model$calculate(lam.um.nodes[g2])
+                model$calculate(lam.unk.nodes[g2])
+              }
+            }
+          }
+          lp.proposed.y.mark <- 0
+          if(n.mark.g>0){
+            for(g2 in 1:n.mark.g){
+              g <- mark.g[g2]
+              if(model$z[i,g]==1){
+                lp.proposed.y.mark <- lp.proposed.y.mark+model$calculate(y.mark.nodes[g2])
+              }
+            }
+          }
+          lp.proposed.y.um <- 0
+          lp.proposed.y.unk <- 0
+          lp.proposed.trap.RE <- 0
+          if(n.sight.g>0){
+            for(g2 in 1:n.sight.g){
+              g <- sight.g[g2]
+              if(model$z[i,g]==1){
+                lp.proposed.y.um <- lp.proposed.y.um+model$calculate(y.um.nodes[g2])
+                lp.proposed.y.unk <- lp.proposed.y.unk+model$calculate(y.unk.nodes[g2])
+                lp.proposed.trap.RE <- lp.proposed.trap.RE+model$calculate(trap.RE.nodes[g2])
+              }
+            }
+          }
           lp.initial <- lp.initial.s + lp.initial.y.mark + lp.initial.y.um + lp.initial.y.unk + lp.initial.trap.RE
           lp.proposed <- lp.proposed.s + lp.proposed.y.mark + lp.proposed.y.um + lp.proposed.y.unk + lp.proposed.trap.RE
         }

@@ -721,13 +721,13 @@ Cmcmc <- compileNimble(Rmcmc,project=Rmodel)
 
 # Run the model.
 start.time2 <- Sys.time()
-Cmcmc$run(5000,reset=FALSE) #can extend run by rerunning this line
+Cmcmc$run(2500,reset=FALSE) #can extend run by rerunning this line
 end.time <- Sys.time()
 time1 <- end.time-start.time  # total time for compilation, replacing samplers, and fitting
 time2 <- end.time-start.time2 # post-compilation run time
 
 mvSamples <- as.matrix(Cmcmc$mvSamples)
-burnin <- 50
+burnin <- 250
 plot(mcmc(mvSamples[-c(1:burnin),]))
 
 #reminder what some targets are
