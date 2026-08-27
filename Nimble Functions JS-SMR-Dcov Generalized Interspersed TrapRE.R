@@ -257,6 +257,7 @@ zSampler <- nimbleFunction(
     sight.g <- control$sight.g
     n.mark.g <- control$n.mark.g
     n.sight.g <- control$n.sight.g
+    sight.node.start <- control$sight.node.start
     z.super.ups <- control$z.super.ups
     n.primary <- control$n.primary
     z.nodes <- control$z.nodes
@@ -911,21 +912,40 @@ zSampler <- nimbleFunction(
         if(z.start.prop!=z.start.curr|z.stop.prop!=z.stop.curr){
           #get initial logProbs
           lp.initial.entry <- model$getLogProb(N.nodes[1])+model$getLogProb(N.recruit.nodes)
+          #only marking likelihoods in primary occasions where z changed
           lp.initial.y.mark <- 0
           for(g2 in 1:n.mark.g){
-            lp.initial.y.mark <- lp.initial.y.mark+model$getLogProb(y.mark.nodes[i+(g2-1)*M])
+            gg <- mark.g[g2]
+            if(z.prop[gg]!=z.curr[gg]){
+              lp.initial.y.mark <- lp.initial.y.mark+model$getLogProb(y.mark.nodes[i+(g2-1)*M])
+            }
           }
-          lp.initial.y.um <- model$getLogProb(y.um.nodes)
-          lp.initial.y.unk <- model$getLogProb(y.unk.nodes)
-          lp.initial.trap.RE <- model$getLogProb(trap.RE.nodes)
+          #only sighting likelihoods in primary occasions where z changed
+          lp.initial.y.um <- 0
+          lp.initial.y.unk <- 0
+          lp.initial.trap.RE <- 0
+          for(g2 in 1:n.sight.g){
+            gg <- sight.g[g2]
+            if(z.prop[gg]!=z.curr[gg]){
+              node.start <- sight.node.start[g2]
+              for(kk in 1:K.sight[gg]){
+                node.idx <- node.start+kk-1
+                lp.initial.y.um <- lp.initial.y.um+model$getLogProb(y.um.nodes[node.idx])
+                lp.initial.y.unk <- lp.initial.y.unk+model$getLogProb(y.unk.nodes[node.idx])
+              }
+              lp.initial.trap.RE <- lp.initial.trap.RE+model$getLogProb(trap.RE.nodes[g2])
+            }
+          }
+          
           #demographic survival likelihood cancels exactly with backwards survival proposal probability
           lp.initial.tel.z.states <- model$getLogProb(tel.z.states.nodes[i])
           
           #subtract out this individual's current lambdas
           bigLam.unmarked.proposed <- bigLam.unmarked.initial
+          #only subtract current lambdas in sighting primary occasions where z changed
           for(g2 in 1:n.sight.g){
             gg <- sight.g[g2]
-            if(z.curr[gg]==1){
+            if(z.prop[gg]!=z.curr[gg]&z.curr[gg]==1){
               for(kk in 1:K.sight[gg]){
                 for(j in 1:J.sight[gg]){
                   bigLam.old <- bigLam.unmarked.proposed[gg,j,kk]
@@ -965,35 +985,78 @@ zSampler <- nimbleFunction(
           model$N.survive <<- model$N[2:n.primary]-model$N.recruit #survivors are guys alive in primary occasion g-1 minus recruits in this primary occasion g
           
           model$calculate(ER.nodes) #update ER when N updated
+
+          #only update pd in marking primary occasions where z changed
           for(g2 in 1:n.mark.g){
-            model$calculate(pd.nodes[i+(g2-1)*M])
+            gg <- mark.g[g2]
+            if(z.prop[gg]!=z.curr[gg]){
+              model$calculate(pd.nodes[i+(g2-1)*M])
+            }
           }
-          for(g2 in 1:n.sight.g){
-            model$calculate(lam.nodes[i+(g2-1)*M])
-          }
-          #add in this individual's proposed lambdas
+
+          #only update lam in sighting primary occasions where z changed
           for(g2 in 1:n.sight.g){
             gg <- sight.g[g2]
-            if(z.prop[gg]==1){
+            if(z.prop[gg]!=z.curr[gg]){
+              model$calculate(lam.nodes[i+(g2-1)*M])
+            }
+          }
+          
+          #only add proposed lambdas in sighting primary occasions where z changed
+          for(g2 in 1:n.sight.g){
+            gg <- sight.g[g2]
+            if(z.prop[gg]!=z.curr[gg]&z.prop[gg]==1){
               for(kk in 1:K.sight[gg]){
                 bigLam.unmarked.proposed[gg,1:J.sight[gg],kk] <- bigLam.unmarked.proposed[gg,1:J.sight[gg],kk]+
                   model$lam[i,gg,1:J.sight[gg]]
               }
             }
           }
+          
           model$bigLam.unmarked <<- bigLam.unmarked.proposed
-          model$calculate(lam.um.nodes)
-          model$calculate(lam.unk.nodes)
+
+          #only update aggregate rates in sighting primary occasions where z changed
+          for(g2 in 1:n.sight.g){
+            gg <- sight.g[g2]
+            if(z.prop[gg]!=z.curr[gg]){
+              node.start <- sight.node.start[g2]
+              for(kk in 1:K.sight[gg]){
+                node.idx <- node.start+kk-1
+                model$calculate(lam.um.nodes[node.idx])
+                model$calculate(lam.unk.nodes[node.idx])
+              }
+            }
+          }
           
           #get proposed logProbs
           lp.proposed.entry <- model$calculate(N.nodes[1])+model$calculate(N.recruit.nodes)
+          
+          #only marking likelihoods in primary occasions where z changed
           lp.proposed.y.mark <- 0
           for(g2 in 1:n.mark.g){
-            lp.proposed.y.mark <- lp.proposed.y.mark+model$calculate(y.mark.nodes[i+(g2-1)*M])
+            gg <- mark.g[g2]
+            if(z.prop[gg]!=z.curr[gg]){
+              lp.proposed.y.mark <- lp.proposed.y.mark+model$calculate(y.mark.nodes[i+(g2-1)*M])
+            }
           }
-          lp.proposed.y.um <- model$calculate(y.um.nodes)
-          lp.proposed.y.unk <- model$calculate(y.unk.nodes)
-          lp.proposed.trap.RE <- model$calculate(trap.RE.nodes)
+          
+          #only sighting likelihoods in primary occasions where z changed
+          lp.proposed.y.um <- 0
+          lp.proposed.y.unk <- 0
+          lp.proposed.trap.RE <- 0
+          for(g2 in 1:n.sight.g){
+            gg <- sight.g[g2]
+            if(z.prop[gg]!=z.curr[gg]){
+              node.start <- sight.node.start[g2]
+              for(kk in 1:K.sight[gg]){
+                node.idx <- node.start+kk-1
+                lp.proposed.y.um <- lp.proposed.y.um+model$calculate(y.um.nodes[node.idx])
+                lp.proposed.y.unk <- lp.proposed.y.unk+model$calculate(y.unk.nodes[node.idx])
+              }
+              lp.proposed.trap.RE <- lp.proposed.trap.RE+model$calculate(trap.RE.nodes[g2])
+            }
+          }
+          
           #telemetry survival does not cancel against the demographic survival proposal
           lp.proposed.tel.z.states <- model$calculate(tel.z.states.nodes[i])
           
@@ -1032,21 +1095,28 @@ zSampler <- nimbleFunction(
             mvSaved["N.survive",1] <<- model[["N.survive"]]
             mvSaved["N.recruit",1] <<- model[["N.recruit"]]
             mvSaved["ER",1] <<- model[["ER"]]
+            #only changed pd nodes need to be saved
             for(g2 in 1:n.mark.g){
               gg <- mark.g[g2]
-              for(j in 1:J.mark[gg]){
-                mvSaved["pd",1][i,gg,j] <<- model[["pd"]][i,gg,j]
+              if(z.prop[gg]!=z.curr[gg]){
+                for(j in 1:J.mark[gg]){
+                  mvSaved["pd",1][i,gg,j] <<- model[["pd"]][i,gg,j]
+                }
               }
             }
+            #only changed sighting nodes need to be saved
             for(g2 in 1:n.sight.g){
               gg <- sight.g[g2]
-              mvSaved["bigLam.unmarked",1][gg,1:J.sight[gg],1:K.sight[gg]] <<- model[["bigLam.unmarked"]][gg,1:J.sight[gg],1:K.sight[gg]]
-              mvSaved["lam.um",1][gg,1:J.sight[gg],1:K.sight[gg]] <<- model[["lam.um"]][gg,1:J.sight[gg],1:K.sight[gg]]
-              mvSaved["lam.unk",1][gg,1:J.sight[gg],1:K.sight[gg]] <<- model[["lam.unk"]][gg,1:J.sight[gg],1:K.sight[gg]]
-              for(j in 1:J.sight[gg]){
-                mvSaved["lam",1][i,gg,j] <<- model[["lam"]][i,gg,j]
+              if(z.prop[gg]!=z.curr[gg]){
+                mvSaved["bigLam.unmarked",1][gg,1:J.sight[gg],1:K.sight[gg]] <<- model[["bigLam.unmarked"]][gg,1:J.sight[gg],1:K.sight[gg]]
+                mvSaved["lam.um",1][gg,1:J.sight[gg],1:K.sight[gg]] <<- model[["lam.um"]][gg,1:J.sight[gg],1:K.sight[gg]]
+                mvSaved["lam.unk",1][gg,1:J.sight[gg],1:K.sight[gg]] <<- model[["lam.unk"]][gg,1:J.sight[gg],1:K.sight[gg]]
+                for(j in 1:J.sight[gg]){
+                  mvSaved["lam",1][i,gg,j] <<- model[["lam"]][i,gg,j]
+                }
               }
             }
+            
             bigLam.unmarked.initial <- bigLam.unmarked.proposed
             entry.counts.curr <- entry.counts.prop
           }else{
@@ -1057,30 +1127,51 @@ zSampler <- nimbleFunction(
             model[["N.survive"]] <<- mvSaved["N.survive",1]
             model[["N.recruit"]] <<- mvSaved["N.recruit",1]
             model[["ER"]] <<- mvSaved["ER",1]
+            #restore pd only in marking primary occasions where z changed
             for(g2 in 1:n.mark.g){
               gg <- mark.g[g2]
-              for(j in 1:J.mark[gg]){
-                model[["pd"]][i,gg,j] <<- mvSaved["pd",1][i,gg,j]
+              if(z.prop[gg]!=z.curr[gg]){
+                for(j in 1:J.mark[gg]){
+                  model[["pd"]][i,gg,j] <<- mvSaved["pd",1][i,gg,j]
+                }
               }
             }
+            #restore sighting nodes only in primary occasions where z changed
             for(g2 in 1:n.sight.g){
               gg <- sight.g[g2]
-              model[["bigLam.unmarked"]][gg,1:J.sight[gg],1:K.sight[gg]] <<- mvSaved["bigLam.unmarked",1][gg,1:J.sight[gg],1:K.sight[gg]]
-              model[["lam.um"]][gg,1:J.sight[gg],1:K.sight[gg]] <<- mvSaved["lam.um",1][gg,1:J.sight[gg],1:K.sight[gg]]
-              model[["lam.unk"]][gg,1:J.sight[gg],1:K.sight[gg]] <<- mvSaved["lam.unk",1][gg,1:J.sight[gg],1:K.sight[gg]]
-              for(j in 1:J.sight[gg]){
-                model[["lam"]][i,gg,j] <<- mvSaved["lam",1][i,gg,j]
+              if(z.prop[gg]!=z.curr[gg]){
+                model[["bigLam.unmarked"]][gg,1:J.sight[gg],1:K.sight[gg]] <<- mvSaved["bigLam.unmarked",1][gg,1:J.sight[gg],1:K.sight[gg]]
+                model[["lam.um"]][gg,1:J.sight[gg],1:K.sight[gg]] <<- mvSaved["lam.um",1][gg,1:J.sight[gg],1:K.sight[gg]]
+                model[["lam.unk"]][gg,1:J.sight[gg],1:K.sight[gg]] <<- mvSaved["lam.unk",1][gg,1:J.sight[gg],1:K.sight[gg]]
+                for(j in 1:J.sight[gg]){
+                  model[["lam"]][i,gg,j] <<- mvSaved["lam",1][i,gg,j]
+                }
               }
             }
+            
             #set these logProbs back
             model$calculate(N.recruit.nodes)
             model$calculate(N.nodes[1])
+            #only restore marking logProbs where z changed
             for(g2 in 1:n.mark.g){
-              model$calculate(y.mark.nodes[i+(g2-1)*M])
+              gg <- mark.g[g2]
+              if(z.prop[gg]!=z.curr[gg]){
+                model$calculate(y.mark.nodes[i+(g2-1)*M])
+              }
             }
-            model$calculate(y.um.nodes)
-            model$calculate(y.unk.nodes)
-            model$calculate(trap.RE.nodes)
+            #only restore aggregate sighting and TrapRE logProbs where z changed
+            for(g2 in 1:n.sight.g){
+              gg <- sight.g[g2]
+              if(z.prop[gg]!=z.curr[gg]){
+                node.start <- sight.node.start[g2]
+                for(kk in 1:K.sight[gg]){
+                  node.idx <- node.start+kk-1
+                  model$calculate(y.um.nodes[node.idx])
+                  model$calculate(y.unk.nodes[node.idx])
+                }
+                model$calculate(trap.RE.nodes[g2])
+              }
+            }
             #model$calculate(z.nodes[i]) #not needed because survival logProb was never recalculated for the proposal
             model$calculate(tel.z.states.nodes[i])
           }

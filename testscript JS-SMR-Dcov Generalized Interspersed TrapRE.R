@@ -422,11 +422,28 @@ z.super.ups <- round(M*0.25) #how many z.super update proposals per iteration?
 y.mark.nodes <- Rmodel$expandNodeNames(paste0("y.mark[1:",M,",1:",n.primary,",1:",max(J.mark),"]"))
 pd.nodes <- Rmodel$expandNodeNames(paste0("pd[1:",M,",1:",n.primary,",1:",max(J.mark),"]"))
 lam.nodes <- Rmodel$expandNodeNames(paste0("lam[1:",M,",1:",n.primary,",1:",max(J.sight),"]"))
-lam.um.nodes <- Rmodel$expandNodeNames(paste0("lam.um[1:",n.primary,",1:",max(J.sight),",1:",max(K.sight),"]"))
-lam.unk.nodes <- Rmodel$expandNodeNames(paste0("lam.unk[1:",n.primary,",1:",max(J.sight),",1:",max(K.sight),"]"))
+#one vector node for each sighting occasion k; build explicitly so node order is
+#known for the partial z.start/z.stop likelihood recalculations
+lam.um.nodes <- lam.unk.nodes <- y.um.nodes <- y.unk.nodes <- c()
+sight.node.start <- integer(n.sight.g)
+for(g2 in 1:n.sight.g){
+  gg <- sight.g[g2]
+  sight.node.start[g2] <- length(y.um.nodes)+1L
+  for(k in 1:K.sight[gg]){
+    y.um.tmp <- Rmodel$expandNodeNames(paste0("y.um[",gg,",1:",J.sight[gg],",",k,"]"))
+    y.unk.tmp <- Rmodel$expandNodeNames(paste0("y.unk[",gg,",1:",J.sight[gg],",",k,"]"))
+    lam.um.tmp <- Rmodel$expandNodeNames(paste0("lam.um[",gg,",1:",J.sight[gg],",",k,"]"))
+    lam.unk.tmp <- Rmodel$expandNodeNames(paste0("lam.unk[",gg,",1:",J.sight[gg],",",k,"]"))
+    if(length(y.um.tmp)!=1|length(y.unk.tmp)!=1|length(lam.um.tmp)!=1|length(lam.unk.tmp)!=1){
+      stop("Expected one vector node per sighting occasion for y.um, y.unk, lam.um, and lam.unk.")
+    }
+    y.um.nodes <- c(y.um.nodes,y.um.tmp)
+    y.unk.nodes <- c(y.unk.nodes,y.unk.tmp)
+    lam.um.nodes <- c(lam.um.nodes,lam.um.tmp)
+    lam.unk.nodes <- c(lam.unk.nodes,lam.unk.tmp)
+  }
+}
 trap.RE.nodes <- Rmodel$expandNodeNames(paste("trap.RE.dummy[1:",n.primary,"]",sep=""))
-y.um.nodes <- Rmodel$expandNodeNames(paste0("y.um[1:",n.primary,",1:",max(J.sight),",1:",max(K.sight),"]"))
-y.unk.nodes <- Rmodel$expandNodeNames(paste0("y.unk[1:",n.primary,",1:",max(J.sight),",1:",max(K.sight),"]"))
 
 N.nodes <- Rmodel$expandNodeNames(paste0("N"))
 N.survive.nodes <- Rmodel$expandNodeNames(paste0("N.survive[1:",n.primary-1,"]"))
@@ -438,7 +455,7 @@ calcNodes <- c(N.nodes,N.recruit.nodes,y.mark.nodes,y.um.nodes,y.unk.nodes,trap.
 conf$addSampler(target = c("z"),
                 type = 'zSampler',control = list(M=M,n.marked.all=n.marked.all,n.cap.all=n.cap.all,
                                                  n.primary=n.primary,J.mark=J.mark,J.sight=J.sight,
-                                                 K.sight=K.sight,
+                                                 K.sight=K.sight,sight.node.start=sight.node.start,
                                                  mark.g=mark.g,sight.g=sight.g,
                                                  n.mark.g=n.mark.g,
                                                  n.sight.g=n.sight.g,
