@@ -542,7 +542,6 @@ for(i in 1:M){
     if(g<n.primary){
       s.nodes <- c(s.nodes,
                    Rmodel$expandNodeNames(paste0("avail.dist[",i,",",g,",1:",n.cells,"]")),
-                   Rmodel$expandNodeNames(paste0("use.dist[",i,",",g,",1:",n.cells,"]")),
                    Rmodel$expandNodeNames(paste0("s[",i,",",g+1,",1:2]")))
     }
     loc.nodes <- c()
@@ -625,7 +624,6 @@ for(i in 1:M){
 #     if(g<n.primary){
 #       s.nodes <- c(s.nodes,
 #                    Rmodel$expandNodeNames(paste0("avail.dist[",i,",",g,",1:",n.cells,"]")),
-#                    Rmodel$expandNodeNames(paste0("use.dist[",i,",",g,",1:",n.cells,"]")),
 #                    Rmodel$expandNodeNames(paste0("s[",i,",",g+1,",1:2]")))
 #     }
 #     loc.nodes <- c()

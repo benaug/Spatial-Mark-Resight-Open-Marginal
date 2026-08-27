@@ -98,7 +98,6 @@ init.SMR.Dcov.mobileAC.Open.Generalized.TrapRE <- function(data,inits=NA,M=NA){
   y.true.pre <- array(0,dim=c(M,n.primary,J.sight.max))
   y.true.pre[1:n.marked.all,,] <- y.mID
   s.pre <- array(0,dim=c(M,n.primary,2))
-  avail.dist.pre <- use.dist.pre <- array(0,dim=c(M,n.primary-1,n.cells))
   on.inds <- which(z.super.pre==1)
   for(i in on.inds){
     obs2D <- rep(0,n.primary)
@@ -214,12 +213,6 @@ init.SMR.Dcov.mobileAC.Open.Generalized.TrapRE <- function(data,inits=NA,M=NA){
         s.pre[i,g,2] <- runif(1,data$dSS[s.cell,2] - data$res/2,data$dSS[s.cell,2] + data$res/2)
       }
     }
-    for(g in 2:n.primary){
-      avail.dist.pre[i,g-1,] <- getAvail(s=s.pre[i,g-1,1:2],sigma=sigma.move.int[g-1],res=data$res,
-                                         x.vals=data$x.vals,y.vals=data$y.vals,
-                                         n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
-      use.dist.pre[i,g-1,] <- getUse(rsf=rsf,avail.dist=avail.dist.pre[i,g-1,],z.super=1)
-    }
   }
   for(g in 1:n.primary){
     if(J.sight[g]>0){
@@ -264,7 +257,7 @@ init.SMR.Dcov.mobileAC.Open.Generalized.TrapRE <- function(data,inits=NA,M=NA){
   z.super.init <- 1*(z.start.init>0)
   #final mobile activity centers using allocated latent detections
   s.init <- array(0,dim=c(M,n.primary,2))
-  avail.dist.init <- use.dist.init <- array(0,dim=c(M,n.primary-1,n.cells))
+  avail.dist.init <- array(0,dim=c(M,n.primary-1,n.cells))
   on.inds <- which(z.super.init==1)
   for(i in on.inds){
     obs2D <- rep(0,n.primary)
@@ -384,7 +377,6 @@ init.SMR.Dcov.mobileAC.Open.Generalized.TrapRE <- function(data,inits=NA,M=NA){
       avail.dist.init[i,g-1,] <- getAvail(s=s.init[i,g-1,1:2],sigma=sigma.move.int[g-1],res=data$res,
                                           x.vals=data$x.vals,y.vals=data$y.vals,
                                           n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
-      use.dist.init[i,g-1,] <- getUse(rsf=rsf,avail.dist=avail.dist.init[i,g-1,],z.super=1)
     }
   }
   #check starting logProb
@@ -393,7 +385,7 @@ init.SMR.Dcov.mobileAC.Open.Generalized.TrapRE <- function(data,inits=NA,M=NA){
     if(z.super.init[i]==1){
       for(g in 2:n.primary){
         logProb[i,g-1] <- dHabMove(x=s.init[i,g,1:2],s.prev=s.init[i,g-1,1:2],
-                                   use.dist=use.dist.init[i,g-1,1:n.cells],
+                                   rsf=rsf[1:n.cells],avail.dist=avail.dist.init[i,g-1,1:n.cells],
                                    dSS=data$dSS[1:n.cells,1:2],cells=data$cells[1:n.cells.x,1:n.cells.y],
                                    res=data$res,sigma.move=sigma.move.int[g-1],z.super=1,log=TRUE)
       }
@@ -510,7 +502,7 @@ init.SMR.Dcov.mobileAC.Open.Generalized.TrapRE <- function(data,inits=NA,M=NA){
       }
     }
   }
-  return(list(s=s.init,avail.dist=avail.dist.init,use.dist=use.dist.init,
+  return(list(s=s.init,avail.dist=avail.dist.init,
               z=z.init,N=N.init,N.survive=N.survive.init,N.recruit=N.recruit.init,
               N.super=N.super.init,z.start=z.start.init,z.stop=z.stop.init,z.super=z.super.init,
               K1D.mark=K1D.mark,K1D.sight=K1D.sight,n.marked=n.marked,n.marked.all=n.marked.all,ID.marked=ID.marked,

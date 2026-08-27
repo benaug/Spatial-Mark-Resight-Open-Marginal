@@ -39,7 +39,7 @@ rHab1 <- nimbleFunction(
 )
 
 dHabMove <- nimbleFunction(
-  run = function(x = double(1),s.prev = double(1),use.dist = double(1),dSS = double(2),
+  run = function(x = double(1),s.prev = double(1),rsf = double(1),avail.dist = double(1),dSS = double(2),
                  cells = double(2),res = double(0),sigma.move = double(0),z.super = double(0),
                  log = integer(0)){
     returnType(double(0))
@@ -52,7 +52,14 @@ dHabMove <- nimbleFunction(
       y.min <- dSS[cell,2] - res/2
       y.max <- dSS[cell,2] + res/2
       # cell selection logProb
-      logProb.cell <- log(use.dist[cell])
+      # logProb.cell <- log(use.dist[cell])
+      #more efficient to not store use.dist, below is equivalent
+      n.cells <- nimDim(rsf)[1]
+      use.denom <- 0
+      for(c in 1:n.cells){
+        use.denom <- use.denom + rsf[c]*avail.dist[c]
+      }
+      logProb.cell <- log(rsf[cell]*avail.dist[cell]/use.denom)
       # continuous within-cell location logProb
       logProb.x <- dnorm(x[1],s.prev[1],sigma.move, log=TRUE) -
         log(pnorm(x.max,s.prev[1],sigma.move) - pnorm(x.min,s.prev[1],sigma.move))
@@ -71,11 +78,12 @@ dHabMove <- nimbleFunction(
 )
 
 rHabMove <- nimbleFunction(
-  run = function(n = integer(0),s.prev = double(1),use.dist = double(1),dSS = double(2),
+  run = function(n = integer(0),s.prev = double(1),rsf = double(1),avail.dist = double(1),dSS = double(2),
                  cells = double(2),res = double(0),sigma.move = double(0),z.super = double(0)) {
     returnType(double(1))
     if(z.super==1){
       n.cells <- nimDim(dSS)[1]
+      use.dist <- getUse(rsf=rsf,avail.dist=avail.dist,z.super=1)
       s.cell <- rcat(1,use.dist[1:n.cells])
       x.min <- dSS[s.cell,1] - res/2
       x.max <- dSS[s.cell,1] + res/2
@@ -93,7 +101,6 @@ rHabMove <- nimbleFunction(
     }
   }
 )
-
 
 getAvail <- nimbleFunction(
   run = function(s = double(1),sigma=double(0),res=double(0),x.vals=double(1),y.vals=double(1),
@@ -1412,7 +1419,6 @@ zSampler <- nimbleFunction(
           }
           for(g in 1:(n.primary-1)){
             model$avail.dist[pick,g,1:n.cells] <<- rep(0,n.cells)
-            model$use.dist[pick,g,1:n.cells] <<- rep(0,n.cells)
           }
           
           for(g2 in 1:n.mark.g){
@@ -1479,7 +1485,6 @@ zSampler <- nimbleFunction(
             mvSaved["s",1][pick,1:n.primary,1:2] <<- model[["s"]][pick,1:n.primary,1:2]
             for(g2 in 1:(n.primary-1)){
               mvSaved["avail.dist",1][pick,g2,1:n.cells] <<- model[["avail.dist"]][pick,g2,1:n.cells]
-              mvSaved["use.dist",1][pick,g2,1:n.cells] <<- model[["use.dist"]][pick,g2,1:n.cells]
             }
             for(g2 in 1:n.mark.g){
               gg <- mark.g[g2]
@@ -1517,7 +1522,6 @@ zSampler <- nimbleFunction(
             model[["s"]][pick,1:n.primary,1:2] <<- mvSaved["s",1][pick,1:n.primary,1:2]
             for(g2 in 1:(n.primary-1)){
               model[["avail.dist"]][pick,g2,1:n.cells] <<- mvSaved["avail.dist",1][pick,g2,1:n.cells]
-              model[["use.dist"]][pick,g2,1:n.cells] <<- mvSaved["use.dist",1][pick,g2,1:n.cells]
             }
             for(g2 in 1:n.mark.g){
               gg <- mark.g[g2]
@@ -1617,17 +1621,16 @@ zSampler <- nimbleFunction(
                                         dSS=dSS[1:n.cells,1:2],res=res,
                                         xlim=xlim,ylim=ylim,z.super=1)
           #propose subsequent primary occasions from the RSF movement prior
+          #propose subsequent primary occasions from the RSF movement prior
           for(g in 2:n.primary){
             model$avail.dist[pick,g-1,1:n.cells] <<- getAvail(s=model$s[pick,g-1,1:2],
                                                               sigma=model$sigma.move.int[g-1],res=res,
                                                               x.vals=x.vals,y.vals=y.vals,
                                                               n.cells.x=n.cells.x,n.cells.y=n.cells.y,
                                                               z.super=1)
-            model$use.dist[pick,g-1,1:n.cells] <<- getUse(rsf=model$rsf[1:n.cells],
-                                                          avail.dist=model$avail.dist[pick,g-1,1:n.cells],
-                                                          z.super=1)
             model$s[pick,g,1:2] <<- rHabMove(1,s.prev=model$s[pick,g-1,1:2],
-                                             use.dist=model$use.dist[pick,g-1,1:n.cells],
+                                             rsf=model$rsf[1:n.cells],
+                                             avail.dist=model$avail.dist[pick,g-1,1:n.cells],
                                              dSS=dSS[1:n.cells,1:2],
                                              cells=cells[1:n.cells.x,1:n.cells.y],
                                              res=res,sigma.move=model$sigma.move.int[g-1],z.super=1)
@@ -1702,7 +1705,6 @@ zSampler <- nimbleFunction(
             mvSaved["s",1][pick,1:n.primary,1:2] <<- model[["s"]][pick,1:n.primary,1:2]
             for(g2 in 1:(n.primary-1)){
               mvSaved["avail.dist",1][pick,g2,1:n.cells] <<- model[["avail.dist"]][pick,g2,1:n.cells]
-              mvSaved["use.dist",1][pick,g2,1:n.cells] <<- model[["use.dist"]][pick,g2,1:n.cells]
             }
             for(g2 in 1:n.mark.g){
               gg <- mark.g[g2]
@@ -1740,7 +1742,6 @@ zSampler <- nimbleFunction(
             model[["s"]][pick,1:n.primary,1:2] <<- mvSaved["s",1][pick,1:n.primary,1:2]
             for(g2 in 1:(n.primary-1)){
               model[["avail.dist"]][pick,g2,1:n.cells] <<- mvSaved["avail.dist",1][pick,g2,1:n.cells]
-              model[["use.dist"]][pick,g2,1:n.cells] <<- mvSaved["use.dist",1][pick,g2,1:n.cells]
             }
             for(g2 in 1:n.mark.g){
               gg <- mark.g[g2]

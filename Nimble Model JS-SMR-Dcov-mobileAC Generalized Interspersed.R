@@ -38,13 +38,16 @@ NimModel <- nimbleCode({
   for(i in 1:M){
     s[i,1,1:2] ~ dHab1(pi.cell=pi.cell[1:n.cells],cells=cells[1:n.cells.x,1:n.cells.y],res=res,dSS=dSS[1:n.cells,1:2],
                            xlim=xlim[1:2],ylim=ylim[1:2],z.super=z.super[i])
+    #subsequent primary occasion activity center - movement with resource selection
     for(g in 2:n.primary){
+      #all avail.dist and s set to 0 if not in population, z.super[i]=0
       avail.dist[i,g-1,1:n.cells] <- getAvail(s=s[i,g-1,1:2],sigma=sigma.move.int[g-1],res=res,
                                               x.vals=x.vals[1:n.cells.x],y.vals=y.vals[1:n.cells.y],
                                               n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=z.super[i])
-      use.dist[i,g-1,1:n.cells] <- getUse(rsf=rsf[1:n.cells],avail.dist=avail.dist[i,g-1,1:n.cells],z.super=z.super[i])
-      s[i,g,1:2] ~ dHabMove(s.prev=s[i,g-1,1:2],use.dist=use.dist[i,g-1,1:n.cells],dSS=dSS[1:n.cells,1:2],
-                            cells=cells[1:n.cells.x,1:n.cells.y],res=res,sigma.move=sigma.move.int[g-1],z.super=z.super[i])
+      #computing use.dist inside dHabMove and not storing it
+      s[i,g,1:2] ~ dHabMove(s.prev=s[i,g-1,1:2],rsf=rsf[1:n.cells],avail.dist=avail.dist[i,g-1,1:n.cells],
+                            dSS=dSS[1:n.cells,1:2],cells=cells[1:n.cells.x,1:n.cells.y],
+                            res=res,sigma.move=sigma.move.int[g-1],z.super=z.super[i])
     }
   }
   
