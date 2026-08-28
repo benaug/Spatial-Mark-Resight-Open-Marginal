@@ -1199,10 +1199,10 @@ zSampler <- nimbleFunction(
           log.prop.back <- log.prop.back+log(recruit.probs.back[z.start.curr])
           #survival proposal probabilities are not calculated because they cancel exactly
           #with the survival likelihood ratio in the MH ratio
-          lp.initial.total <- lp.initial.entry+lp.initial.y.mark+lp.initial.y.um+
-            lp.initial.y.unk+lp.initial.tel.z.states
-          lp.proposed.total <- lp.proposed.entry+lp.proposed.y.mark+lp.proposed.y.um+
-            lp.proposed.y.unk+lp.proposed.tel.z.states
+          lp.initial.total <- lp.initial.entry + lp.initial.y.mark + lp.initial.y.um +
+            lp.initial.y.unk + lp.initial.tel.z.states
+          lp.proposed.total <- lp.proposed.entry + lp.proposed.y.mark + lp.proposed.y.um +
+            lp.proposed.y.unk + lp.proposed.tel.z.states
           
           #MH step
           log_MH_ratio <- (lp.proposed.total+log.prior.ratio+log.prop.back)-(lp.initial.total+log.prop.for)
@@ -1318,13 +1318,7 @@ zSampler <- nimbleFunction(
           #get initial logProbs
           lp.initial.N <- model$getLogProb(N.nodes[1])
           lp.initial.N.recruit <- model$getLogProb(N.recruit.nodes)
-          #old code evaluated z.super-remove observation likelihoods over all sampled primary occasions
-          # lp.initial.y.mark <- 0
-          # for(g2 in 1:n.mark.g){
-          #   lp.initial.y.mark <- lp.initial.y.mark+model$getLogProb(y.mark.nodes[pick+(g2-1)*M])
-          # }
-          # lp.initial.y.um <- model$getLogProb(y.um.nodes)
-          # lp.initial.y.unk <- model$getLogProb(y.unk.nodes)
+          #only need to consider when z.curr=1 since those are the only values that can change with this proposal
           lp.initial.y.mark <- 0
           for(g2 in 1:n.mark.g){
             gg <- mark.g[g2]
@@ -1397,17 +1391,7 @@ zSampler <- nimbleFunction(
             model$avail.dist[pick,g,1:n.cells] <<- rep(0,n.cells)
           }
           
-          #old code recalculated focal/aggregate observation nodes over all sampled primary occasions
-          # for(g2 in 1:n.mark.g){
-          #   model$calculate(pd.nodes[pick+(g2-1)*M]) #turn pd off
-          # }
-          # for(g2 in 1:n.sight.g){
-          #   model$calculate(lam.nodes[pick+(g2-1)*M]) #turn lam off
-          # }
-          # model$bigLam.unmarked <<- bigLam.unmarked.proposed
-          # model$calculate(lam.um.nodes)
-          # model$calculate(lam.unk.nodes)
-          #
+          #only need to consider when z.curr=1 since those are the only values that can change with this proposal
           #When z.super is proposed off, focal pd and lam are known to be zero.
           #Delay synchronizing those deterministic nodes until the proposal is accepted.
           model$bigLam.unmarked <<- bigLam.unmarked.proposed
@@ -1427,13 +1411,7 @@ zSampler <- nimbleFunction(
           #get proposed logProbs for N, N.recruit, and y
           lp.proposed.N <- model$calculate(N.nodes[1])
           lp.proposed.N.recruit <- model$calculate(N.recruit.nodes)
-          #old code recalculated z.super-remove observation likelihoods over all sampled primary occasions
-          # lp.proposed.y.mark <- 0
-          # for(g2 in 1:n.mark.g){
-          #   lp.proposed.y.mark <- lp.proposed.y.mark+model$calculate(y.mark.nodes[pick+(g2-1)*M])
-          # } #will always be 0
-          # lp.proposed.y.um <- model$calculate(y.um.nodes)
-          # lp.proposed.y.unk <- model$calculate(y.unk.nodes)
+          #only need to consider when z.curr=1 since those are the only values that can change with this proposal
           lp.proposed.y.mark <- 0 #all marking likelihood terms are zero when z.super=0
           lp.proposed.y.um <- 0
           lp.proposed.y.unk <- 0
@@ -1484,22 +1462,7 @@ zSampler <- nimbleFunction(
             for(g2 in 1:(n.primary-1)){
               mvSaved["avail.dist",1][pick,g2,1:n.cells] <<- model[["avail.dist"]][pick,g2,1:n.cells]
             }
-            #old code saved focal/aggregate observation nodes over all sampled primary occasions
-            # for(g2 in 1:n.mark.g){
-            #   gg <- mark.g[g2]
-            #   for(j in 1:J.mark[gg]){
-            #     mvSaved["pd",1][pick,gg,j] <<- model[["pd"]][pick,gg,j]
-            #   }
-            # }
-            # for(g2 in 1:n.sight.g){
-            #   gg <- sight.g[g2]
-            #   mvSaved["bigLam.unmarked",1][gg,1:J.sight[gg]] <<- model[["bigLam.unmarked"]][gg,1:J.sight[gg]]
-            #   mvSaved["lam.um",1][gg,1:J.sight[gg]] <<- model[["lam.um"]][gg,1:J.sight[gg]]
-            #   mvSaved["lam.unk",1][gg,1:J.sight[gg]] <<- model[["lam.unk"]][gg,1:J.sight[gg]]
-            #   for(j in 1:J.sight[gg]){
-            #     mvSaved["lam",1][pick,gg,j] <<- model[["lam"]][pick,gg,j]
-            #   }
-            # }
+            #only need to consider when z.curr=1 since those are the only values that can change with this proposal
             #synchronize focal marking nodes only where they changed from on to off
             for(g2 in 1:n.mark.g){
               gg <- mark.g[g2]
@@ -1545,28 +1508,7 @@ zSampler <- nimbleFunction(
             for(g2 in 1:(n.primary-1)){
               model[["avail.dist"]][pick,g2,1:n.cells] <<- mvSaved["avail.dist",1][pick,g2,1:n.cells]
             }
-            #old code restored/recalculated observation nodes over all sampled primary occasions
-            # for(g2 in 1:n.mark.g){
-            #   gg <- mark.g[g2]
-            #   for(j in 1:J.mark[gg]){
-            #     model[["pd"]][pick,gg,j] <<- mvSaved["pd",1][pick,gg,j]
-            #   }
-            # }
-            # for(g2 in 1:n.sight.g){
-            #   gg <- sight.g[g2]
-            #   model[["bigLam.unmarked"]][gg,1:J.sight[gg]] <<- mvSaved["bigLam.unmarked",1][gg,1:J.sight[gg]]
-            #   model[["lam.um"]][gg,1:J.sight[gg]] <<- mvSaved["lam.um",1][gg,1:J.sight[gg]]
-            #   model[["lam.unk"]][gg,1:J.sight[gg]] <<- mvSaved["lam.unk",1][gg,1:J.sight[gg]]
-            #   for(j in 1:J.sight[gg]){
-            #     model[["lam"]][pick,gg,j] <<- mvSaved["lam",1][pick,gg,j]
-            #   }
-            # }
-            # #set these logProbs back
-            # for(g2 in 1:n.mark.g){
-            #   model$calculate(y.mark.nodes[pick+(g2-1)*M])
-            # }
-            # model$calculate(y.um.nodes)
-            # model$calculate(y.unk.nodes)
+            #only need to consider when z.curr=1 since those are the only values that can change with this proposal
             #Focal pd/lam nodes were not recalculated before this rejected remove proposal, so they remain valid.
             for(g2 in 1:n.sight.g){
               gg <- sight.g[g2]
@@ -1606,13 +1548,6 @@ zSampler <- nimbleFunction(
           #get initial logProbs
           lp.initial.N <- model$getLogProb(N.nodes[1])
           lp.initial.N.recruit <- model$getLogProb(N.recruit.nodes)
-          #old code evaluated z.super-add initial observation likelihoods over all sampled primary occasions
-          # lp.initial.y.mark <- 0
-          # for(g2 in 1:n.mark.g){
-          #   lp.initial.y.mark <- lp.initial.y.mark+model$getLogProb(y.mark.nodes[pick+(g2-1)*M])
-          # } #will always be 0
-          # lp.initial.y.um <- model$getLogProb(y.um.nodes)
-          # lp.initial.y.unk <- model$getLogProb(y.unk.nodes)
           lp.initial.y.mark <- 0
           lp.initial.y.um <- 0
           lp.initial.y.unk <- 0
@@ -1676,7 +1611,6 @@ zSampler <- nimbleFunction(
                                         dSS=dSS[1:n.cells,1:2],res=res,
                                         xlim=xlim,ylim=ylim,z.super=1)
           #propose subsequent primary occasions from the RSF movement prior
-          #propose subsequent primary occasions from the RSF movement prior
           for(g in 2:n.primary){
             model$avail.dist[pick,g-1,1:n.cells] <<- getAvail(s=model$s[pick,g-1,1:2],
                                                               sigma=model$sigma.move.int[g-1],res=res,
@@ -1690,27 +1624,6 @@ zSampler <- nimbleFunction(
                                              cells=cells[1:n.cells.x,1:n.cells.y],
                                              res=res,sigma.move=model$sigma.move.int[g-1],z.super=1)
           }
-          
-          #old code recalculated focal/aggregate observation nodes over all sampled primary occasions
-          # for(g2 in 1:n.mark.g){
-          #   model$calculate(pd.nodes[pick+(g2-1)*M]) #turn pd on
-          # }
-          # for(g2 in 1:n.sight.g){
-          #   model$calculate(lam.nodes[pick+(g2-1)*M]) #turn lam on
-          # }
-          # #add these in after calculating lam
-          # bigLam.unmarked.proposed <- bigLam.unmarked.initial
-          # for(g2 in 1:n.sight.g){
-          #   gg <- sight.g[g2]
-          #   if(model$z[pick,gg]==1){
-          #     bigLam.unmarked.proposed[gg,1:J.sight[gg]] <- bigLam.unmarked.proposed[gg,1:J.sight[gg]]+
-          #       model$lam[pick,gg,1:J.sight[gg]]
-          #   }
-          # }
-          # model$bigLam.unmarked <<- bigLam.unmarked.proposed
-          # model$calculate(lam.um.nodes)
-          # model$calculate(lam.unk.nodes)
-          # 
           #only proposed alive primary occasions can have nonzero focal detection nodes
           for(g2 in 1:n.mark.g){
             gg <- mark.g[g2]
@@ -1744,13 +1657,7 @@ zSampler <- nimbleFunction(
           #get proposed logprobs for N and y
           lp.proposed.N <- model$calculate(N.nodes[1])
           lp.proposed.N.recruit <- model$calculate(N.recruit.nodes)
-          #old code recalculated z.super-add observation likelihoods over all sampled primary occasions
-          # lp.proposed.y.mark <- 0
-          # for(g2 in 1:n.mark.g){
-          #   lp.proposed.y.mark <- lp.proposed.y.mark+model$calculate(y.mark.nodes[pick+(g2-1)*M])
-          # }
-          # lp.proposed.y.um <- model$calculate(y.um.nodes)
-          # lp.proposed.y.unk <- model$calculate(y.unk.nodes)
+          #only need to consider when z.prop=1 since those are the only values that can change with this proposal
           lp.proposed.y.mark <- 0
           for(g2 in 1:n.mark.g){
             gg <- mark.g[g2]
@@ -1807,22 +1714,7 @@ zSampler <- nimbleFunction(
             for(g2 in 1:(n.primary-1)){
               mvSaved["avail.dist",1][pick,g2,1:n.cells] <<- model[["avail.dist"]][pick,g2,1:n.cells]
             }
-            #old code saved focal/aggregate observation nodes over all sampled primary occasions
-            # for(g2 in 1:n.mark.g){
-            #   gg <- mark.g[g2]
-            #   for(j in 1:J.mark[gg]){
-            #     mvSaved["pd",1][pick,gg,j] <<- model[["pd"]][pick,gg,j]
-            #   }
-            # }
-            # for(g2 in 1:n.sight.g){
-            #   gg <- sight.g[g2]
-            #   mvSaved["bigLam.unmarked",1][gg,1:J.sight[gg]] <<- model[["bigLam.unmarked"]][gg,1:J.sight[gg]]
-            #   mvSaved["lam.um",1][gg,1:J.sight[gg]] <<- model[["lam.um"]][gg,1:J.sight[gg]]
-            #   mvSaved["lam.unk",1][gg,1:J.sight[gg]] <<- model[["lam.unk"]][gg,1:J.sight[gg]]
-            #   for(j in 1:J.sight[gg]){
-            #     mvSaved["lam",1][pick,gg,j] <<- model[["lam"]][pick,gg,j]
-            #   }
-            # }
+            #only need to consider when z.prop=1 since those are the only values that can change with this proposal
             for(g2 in 1:n.mark.g){
               gg <- mark.g[g2]
               if(model$z[pick,gg]==1){
@@ -1864,28 +1756,7 @@ zSampler <- nimbleFunction(
             for(g2 in 1:(n.primary-1)){
               model[["avail.dist"]][pick,g2,1:n.cells] <<- mvSaved["avail.dist",1][pick,g2,1:n.cells]
             }
-            #old code restored/recalculated observation nodes over all sampled primary occasions
-            # for(g2 in 1:n.mark.g){
-            #   gg <- mark.g[g2]
-            #   for(j in 1:J.mark[gg]){
-            #     model[["pd"]][pick,gg,j] <<- mvSaved["pd",1][pick,gg,j]
-            #   }
-            # }
-            # for(g2 in 1:n.sight.g){
-            #   gg <- sight.g[g2]
-            #   model[["bigLam.unmarked"]][gg,1:J.sight[gg]] <<- mvSaved["bigLam.unmarked",1][gg,1:J.sight[gg]]
-            #   model[["lam.um"]][gg,1:J.sight[gg]] <<- mvSaved["lam.um",1][gg,1:J.sight[gg]]
-            #   model[["lam.unk"]][gg,1:J.sight[gg]] <<- mvSaved["lam.unk",1][gg,1:J.sight[gg]]
-            #   for(j in 1:J.sight[gg]){
-            #     model[["lam"]][pick,gg,j] <<- mvSaved["lam",1][pick,gg,j]
-            #   }
-            # }
-            # #set these logProbs back
-            # for(g2 in 1:n.mark.g){
-            #   model$calculate(y.mark.nodes[pick+(g2-1)*M])
-            # }
-            # model$calculate(y.um.nodes)
-            # model$calculate(y.unk.nodes)
+            #only update g that can change
             for(g2 in 1:n.mark.g){
               gg <- mark.g[g2]
               if(gg>=z.start.prop&gg<=z.stop.prop){

@@ -381,6 +381,8 @@ idx <- which(is.na(data$locs))
 if(length(idx)>0){
   data$locs[idx] <- 0
 }
+tau <- data$tau
+tau.move <- data$tau.move
 
 #Need some inits to initialize data
 #Use reasonable inits for lam0 and sigma since we check to make sure initial observation
@@ -440,7 +442,7 @@ n.sight.g <- length(sight.g)
 #might want to center D.cov here. Simulated D.cov in this testscript is already effectively centered.
 constants <- list(n.primary=n.primary,M=M,J.mark=J.mark,J.sight=J.sight,
                   K1D.mark=nimbuild$K1D.mark,K1D.sight=nimbuild$K1D.sight,
-                  D.cov=D.cov,tau=data$tau,tau.move=data$tau.move,
+                  D.cov=D.cov,tau=tau,tau.move=tau.move,
                   n.marked.all=nimbuild$n.marked.all,
                   n.tel.sessions=data$n.tel.sessions,tel.session=data$tel.session,max.n.tel.locs=max.n.tel.locs,
                   tel.ID=data$tel.ID,n.tel.inds=data$n.tel.inds,n.locs.ind=data$n.locs.ind,
@@ -704,11 +706,11 @@ for(i in 1:M){
 # for(g in 1:(n.primary-1)){
 #   target <- paste0("gamma[",g,"]")
 #   conf$removeSamplers(target)
-#   conf$addSampler(target=target,type=truncGammaPoisSampler,control=list(tau=data$tau))
+#   conf$addSampler(target=target,type=truncGammaPoisSampler,control=list(tau=tau))
 # }
 #if gamma is fixed
 conf$removeSamplers("gamma")
-conf$addSampler(target="gamma",type=truncGammaPoisSampler,control=list(tau=data$tau))
+conf$addSampler(target="gamma",type=truncGammaPoisSampler,control=list(tau=tau))
 
 conf$addSampler(target = c("D0","D.beta1"),
                 type = 'AF_slice',control=list(adaptive=TRUE),silent = TRUE)
