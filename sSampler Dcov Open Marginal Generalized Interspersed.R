@@ -13,9 +13,10 @@ sSamplerDcov <- nimbleFunction(
     ylim <- control$ylim
     n.cells.x <- control$n.cells.x
     n.cells.y <- control$n.cells.y
-    # n.marked.all <- control$n.marked.all #no longer needed; mark.states handles marked/unmarked contributions
     n.primary <- control$n.primary
     mark.states <- control$mark.states
+    mark.states.all <- control$mark.states.all
+    M <- dim(mark.states.all)[1]
     ## control list extraction
     # logScale            <- extractControlElement(control, 'log',                 FALSE)
     # reflective          <- extractControlElement(control, 'reflective',          FALSE)
@@ -260,15 +261,39 @@ sSamplerDcov <- nimbleFunction(
           g <- sight.g[g2]
           if(model$z[i,g]==1){ #z.super always 1 here
             for(k in 1:K.sight[g]){
-              bigLam.marked.proposed[g,1:J.sight[g],k] <- bigLam.marked.proposed[g,1:J.sight[g],k] - model$lam[i,g,1:J.sight[g]]*mark.states[g,k]
-              bigLam.unmarked.proposed[g,1:J.sight[g],k] <- bigLam.unmarked.proposed[g,1:J.sight[g],k] - model$lam[i,g,1:J.sight[g]]*(1-mark.states[g,k])
-              #make sure you didn't end up with any negative numbers due to machine precision
-              for(j in 1:J.sight[g]){
-                if(bigLam.marked.proposed[g,j,k]<0){
-                  bigLam.marked.proposed[g,j,k] <- 0
+              if(mark.states[g,k]==1){
+                for(j in 1:J.sight[g]){
+                  bigLam.old <- bigLam.marked.proposed[g,j,k]
+                  bigLam.marked.proposed[g,j,k] <- bigLam.old-model$lam[i,g,j]
+                  #if subtraction nearly cancels the total, recompute the residual to avoid numerical loss
+                  if(bigLam.old>0&bigLam.marked.proposed[g,j,k]<=1e-12*bigLam.old){
+                    bigLam.marked.proposed[g,j,k] <- 0
+                    for(ii in 1:M){
+                      if(ii!=i&mark.states.all[ii,g,k]==1){
+                        bigLam.marked.proposed[g,j,k] <- bigLam.marked.proposed[g,j,k]+model$lam[ii,g,j]
+                      }
+                    }
+                  }
+                  if(bigLam.marked.proposed[g,j,k]<0){
+                    bigLam.marked.proposed[g,j,k] <- 0
+                  }
                 }
-                if(bigLam.unmarked.proposed[g,j,k]<0){
-                  bigLam.unmarked.proposed[g,j,k] <- 0
+              }else{
+                for(j in 1:J.sight[g]){
+                  bigLam.old <- bigLam.unmarked.proposed[g,j,k]
+                  bigLam.unmarked.proposed[g,j,k] <- bigLam.old-model$lam[i,g,j]
+                  #if subtraction nearly cancels the total, recompute the residual to avoid numerical loss
+                  if(bigLam.old>0&bigLam.unmarked.proposed[g,j,k]<=1e-12*bigLam.old){
+                    bigLam.unmarked.proposed[g,j,k] <- 0
+                    for(ii in 1:M){
+                      if(ii!=i&mark.states.all[ii,g,k]==0){
+                        bigLam.unmarked.proposed[g,j,k] <- bigLam.unmarked.proposed[g,j,k]+model$lam[ii,g,j]
+                      }
+                    }
+                  }
+                  if(bigLam.unmarked.proposed[g,j,k]<0){
+                    bigLam.unmarked.proposed[g,j,k] <- 0
+                  }
                 }
               }
             }

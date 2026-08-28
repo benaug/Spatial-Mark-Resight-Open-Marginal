@@ -489,6 +489,7 @@ for(i in 1:M){
                                                      xlim=xlim,ylim=ylim,J.mark=J.mark,J.sight=J.sight,
                                                      K.sight=K.sight,n.marked.all=nimbuild$n.marked.all,
                                                      n.primary=n.primary,loc.nodes=loc.nodes,mark.states=nimbuild$mark.states[i,,],
+                                                     mark.states.all=nimbuild$mark.states,
                                                      sight.g=sight.g,n.sight.g=n.sight.g),
                   silent = TRUE)
 }
