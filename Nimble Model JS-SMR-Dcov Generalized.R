@@ -85,7 +85,7 @@ NimModel <- nimbleCode({
   }
   #sighting process
   for(g in 1:n.sight.g){
-    lam0[g] ~ dunif(0,5) #lam0tau <- rep(1,n.primary-1) #duration of each primary-occasion interval varies by primary occasion
+    lam0[g] ~ dunif(0,5)  #lam0 varies by primary occasion
     for(i in 1:M){
       lam[i,sight.g[g],
           1:J.sight[sight.g[g]]] <- GetDetectionRate(s=s[i,1:2],

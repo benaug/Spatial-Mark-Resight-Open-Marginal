@@ -19,7 +19,7 @@ NimModel <- nimbleCode({
   }
   N.super <- N[1] + sum(N.recruit[1:(n.primary-1)]) #size of superpopulation
   
-   #Recruitment
+  #Recruitment
   gamma ~ dunif(0,2) #fixed recruitment parameter
   for(g in 1:(n.primary-1)){
     # gamma[g] ~ dunif(0,2) #recruitment priors by primary occasion
@@ -73,8 +73,8 @@ NimModel <- nimbleCode({
     p0[g] ~ dunif(0,1) #p0 varies by primary occasion
     for(i in 1:M){
       pd[i,mark.g[g],1:J.mark[mark.g[g]]] <- GetDetectionProb(
-           s=s[i,1:2],X=X.mark[mark.g[g],1:J.mark[mark.g[g]],1:2],
-            J=J.mark[mark.g[g]],sigma=sigma[mark.g[g]],p0=p0[g],z=z[i,mark.g[g]],z.super=z.super[i])
+        s=s[i,1:2],X=X.mark[mark.g[g],1:J.mark[mark.g[g]],1:2],
+        J=J.mark[mark.g[g]],sigma=sigma[mark.g[g]],p0=p0[g],z=z[i,mark.g[g]],z.super=z.super[i])
       y.mark[i,mark.g[g],1:J.mark[mark.g[g]]] ~ dBinomialVector(
         pd[i,mark.g[g],1:J.mark[mark.g[g]]],K1D=K1D.mark[mark.g[g],1:J.mark[mark.g[g]]],
         z=z[i,mark.g[g]],z.super=z.super[i])
@@ -88,7 +88,7 @@ NimModel <- nimbleCode({
       lam[i,sight.g[g],
           1:J.sight[sight.g[g]]] <- GetDetectionRate(
             s=s[i,1:2],X=X.sight[sight.g[g],1:J.sight[sight.g[g]],1:2],
-             J=J.sight[sight.g[g]],sigma=sigma[sight.g[g]],lam0=lam0[g],
+            J=J.sight[sight.g[g]],sigma=sigma[sight.g[g]],lam0=lam0[g],
             z=z[i,sight.g[g]],z.super=z.super[i])
       
     }

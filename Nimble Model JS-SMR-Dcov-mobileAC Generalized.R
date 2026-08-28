@@ -37,7 +37,7 @@ NimModel <- nimbleCode({
   rsf[1:n.cells] <- InSS[1:n.cells]*exp(rsf.beta*D.cov[1:n.cells])
   for(i in 1:M){
     s[i,1,1:2] ~ dHab1(pi.cell=pi.cell[1:n.cells],cells=cells[1:n.cells.x,1:n.cells.y],res=res,dSS=dSS[1:n.cells,1:2],
-                           xlim=xlim[1:2],ylim=ylim[1:2],z.super=z.super[i])
+                       xlim=xlim[1:2],ylim=ylim[1:2],z.super=z.super[i])
     #subsequent primary occasion activity center - movement with resource selection
     for(g in 2:n.primary){
       #all avail.dist and s set to 0 if not in population, z.super[i]=0
@@ -87,14 +87,14 @@ NimModel <- nimbleCode({
     for(i in 1:M){
       pd[i,mark.g[g],
          1:J.mark[mark.g[g]]] <- GetDetectionProb(s=s[i,mark.g[g],1:2],
-                                                      X=X.mark[mark.g[g],1:J.mark[mark.g[g]],1:2],
-                                                      J=J.mark[mark.g[g]],sigma=sigma[mark.g[g]],
-                                                      p0=p0[g],z=z[i,mark.g[g]],
-                                                      z.super=z.super[i])
+                                                  X=X.mark[mark.g[g],1:J.mark[mark.g[g]],1:2],
+                                                  J=J.mark[mark.g[g]],sigma=sigma[mark.g[g]],
+                                                  p0=p0[g],z=z[i,mark.g[g]],
+                                                  z.super=z.super[i])
       y.mark[i,mark.g[g],
              1:J.mark[mark.g[g]]] ~ dBinomialVector(pd[i,mark.g[g],1:J.mark[mark.g[g]]],
-                                                        K1D=K1D.mark[mark.g[g],1:J.mark[mark.g[g]]],
-                                                        z=z[i,mark.g[g]],z.super=z.super[i])
+                                                    K1D=K1D.mark[mark.g[g],1:J.mark[mark.g[g]]],
+                                                    z=z[i,mark.g[g]],z.super=z.super[i])
     }
   }
   #sighting process
@@ -103,48 +103,48 @@ NimModel <- nimbleCode({
     for(i in 1:M){
       lam[i,sight.g[g],
           1:J.sight[sight.g[g]]] <- GetDetectionRate(s=s[i,sight.g[g],1:2],
-                                                         X=X.sight[sight.g[g],1:J.sight[sight.g[g]],1:2],
-                                                         J=J.sight[sight.g[g]],sigma=sigma[sight.g[g]],
-                                                         lam0=lam0[g],z=z[i,sight.g[g]],
-                                                         z.super=z.super[i])
+                                                     X=X.sight[sight.g[g],1:J.sight[sight.g[g]],1:2],
+                                                     J=J.sight[sight.g[g]],sigma=sigma[sight.g[g]],
+                                                     lam0=lam0[g],z=z[i,sight.g[g]],
+                                                     z.super=z.super[i])
       
     }
     for(i in 1:n.marked.all){ #marked and identified detections
       y.mID[i,sight.g[g],
             1:J.sight[sight.g[g]]] ~ dPoissonVector(lam=lam[i,sight.g[g],1:J.sight[sight.g[g]]]*
-                                                          K1D.sight[sight.g[g],1:J.sight[sight.g[g]]]*
-                                                          theta.marked[1],
-                                                        z=z[i,sight.g[g]],z.super=z.super[i],
-                                                        mark.states=mark.states[i,sight.g[g]])
+                                                      K1D.sight[sight.g[g],1:J.sight[sight.g[g]]]*
+                                                      theta.marked[1],
+                                                    z=z[i,sight.g[g]],z.super=z.super[i],
+                                                    mark.states=mark.states[i,sight.g[g]])
     }
     #Unidentified detections by type
     #1 marked with no ID detections
     #sum up lambda contributions of marked individuals when they are marked
     bigLam.marked[sight.g[g],
                   1:J.sight[sight.g[g]]] <- GetbigLam(lam=lam[1:n.marked.all,sight.g[g],1:J.sight[sight.g[g]]],
-                                                          z=z[1:n.marked.all,sight.g[g]]*
-                                                            mark.states[1:n.marked.all,sight.g[g]])
+                                                      z=z[1:n.marked.all,sight.g[g]]*
+                                                        mark.states[1:n.marked.all,sight.g[g]])
     lam.mnoID[sight.g[g],
               1:J.sight[sight.g[g]]] <- bigLam.marked[sight.g[g],1:J.sight[sight.g[g]]]*
       K1D.sight[sight.g[g],1:J.sight[sight.g[g]]]*
       theta.marked[2]
     y.mnoID[sight.g[g],
             1:J.sight[sight.g[g]]] ~ dPoissonVector(lam.mnoID[sight.g[g],1:J.sight[sight.g[g]]],
-                                                        z=1,z.super=1,mark.states=1) #plug in z,z.super=1 to reuse dPoissonVector
+                                                    z=1,z.super=1,mark.states=1) #plug in z,z.super=1 to reuse dPoissonVector
     
     #2 unmarked detections
     #sum up lambda contributions of always unmarked individuals and marked individuals in years not marked
     bigLam.unmarked[sight.g[g],
                     1:J.sight[sight.g[g]]] <- GetbigLam(lam=lam[1:M,sight.g[g],1:J.sight[sight.g[g]]],
-                                                            z=z.super[1:M]*z[1:M,sight.g[g]]*
-                                                              (1-mark.states[1:M,sight.g[g]]))
+                                                        z=z.super[1:M]*z[1:M,sight.g[g]]*
+                                                          (1-mark.states[1:M,sight.g[g]]))
     lam.um[sight.g[g],
            1:J.sight[sight.g[g]]] <- bigLam.unmarked[sight.g[g],1:J.sight[sight.g[g]]]*
       K1D.sight[sight.g[g],1:J.sight[sight.g[g]]]*
       theta.unmarked[2]
     y.um[sight.g[g],
          1:J.sight[sight.g[g]]] ~ dPoissonVector(lam.um[sight.g[g],1:J.sight[sight.g[g]]],
-                                                     z=1,z.super=1,mark.states=1) #plug in z,z.super=1 to reuse dPoissonVector
+                                                 z=1,z.super=1,mark.states=1) #plug in z,z.super=1 to reuse dPoissonVector
     
     #3 unknown marked status
     lam.unk[sight.g[g],
@@ -154,7 +154,7 @@ NimModel <- nimbleCode({
       K1D.sight[sight.g[g],1:J.sight[sight.g[g]]]*theta.unmarked[3]
     y.unk[sight.g[g],
           1:J.sight[sight.g[g]]] ~ dPoissonVector(lam.unk[sight.g[g],1:J.sight[sight.g[g]]],
-                                                      z=1,z.super=1,mark.states=1) #plug in z,z.super=1 to reuse dPoissonVector
+                                                  z=1,z.super=1,mark.states=1) #plug in z,z.super=1 to reuse dPoissonVector
   }
   #Telemetry informs activity centers and sigma
   for(i in 1:n.tel.inds){
