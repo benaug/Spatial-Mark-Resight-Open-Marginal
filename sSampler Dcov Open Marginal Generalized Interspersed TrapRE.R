@@ -6,17 +6,18 @@ sSamplerDcov <- nimbleFunction(
     J.mark <- control$J.mark
     J.sight <- control$J.sight
     K.sight <- control$K.sight
+    sight.g <- control$sight.g
+    n.sight.g <- control$n.sight.g
     res <- control$res
     xlim <- control$xlim
     ylim <- control$ylim
     n.cells.x <- control$n.cells.x
     n.cells.y <- control$n.cells.y
+    n.marked.all <- control$n.marked.all
     n.primary <- control$n.primary
     mark.states <- control$mark.states
     mark.states.all <- control$mark.states.all
     M <- dim(mark.states.all)[1]
-    sight.g <- control$sight.g
-    n.sight.g <- control$n.sight.g
     ## control list extraction
     # logScale            <- extractControlElement(control, 'log',                 FALSE)
     # reflective          <- extractControlElement(control, 'reflective',          FALSE)
@@ -26,6 +27,7 @@ sSamplerDcov <- nimbleFunction(
     scale               <- extractControlElement(control, 'scale',               1)
     ## node list generation
     # targetAsScalar <- model$expandNodeNames(target, returnScalarComponents = TRUE)
+    #full dependency set retained only for saving/restoring model state after accept/reject
     calcNodes <- model$getDependencies(target)
     loc.nodes <- control$loc.nodes
     s.nodes <- c(model$expandNodeNames(paste("s[",i,",",1:2,"]")),
@@ -35,56 +37,115 @@ sSamplerDcov <- nimbleFunction(
     if(length(loc.nodes)>0){
       s.nodes <- c(s.nodes,loc.nodes)
     }
-    #OLD observation-specific node definitions - replaced by graph-derived primary-occasion blocks
-    # pd.nodes <- model$expandNodeNames(paste("pd[",i,",1:",n.primary,",1:",max(J.mark),"]"))
-    # lam.nodes <- model$expandNodeNames(paste("lam[",i,",1:",n.primary,",1:",max(J.sight),"]"))
-    # y.mark.nodes <- model$expandNodeNames(paste("y.mark[",i,",1:",n.primary,",1:",max(J.mark),"]"))
-    # y.mID.nodes <- model$expandNodeNames(paste("y.mID[",i,",1:",n.primary,",1:",max(J.sight),",1:",max(K.sight),"]"))
-    # y.mnoID.nodes <- model$expandNodeNames(paste("y.mnoID[1:",n.primary,",1:",max(J.sight),",1:",max(K.sight),"]"))
-    # y.um.nodes <- model$expandNodeNames(paste("y.um[1:",n.primary,",1:",max(J.sight),",1:",max(K.sight),"]"))
-    # y.unk.nodes <- model$expandNodeNames(paste("y.unk[1:",n.primary,",1:",max(J.sight),",1:",max(K.sight),"]"))
-    # lam.mnoID.nodes <- model$expandNodeNames(paste("lam.mnoID[1:",n.primary,",1:",max(J.sight),",1:",max(K.sight),"]"))
-    # lam.um.nodes <- model$expandNodeNames(paste("lam.um[1:",n.primary,",1:",max(J.sight),",1:",max(K.sight),"]"))
-    # lam.unk.nodes <- model$expandNodeNames(paste("lam.unk[1:",n.primary,",1:",max(J.sight),",1:",max(K.sight),"]"))
-    # trap.RE.nodes <- model$expandNodeNames(paste("trap.RE.dummy[1:",n.primary,"]",sep=""))
-    #Group dependencies of s[i,] by primary occasion using the model graph.
-    #focal.nodes contain individual observation terms (e.g., pd/y.mark and lam/y.mID).
-    #aggregate.nodes contain terms downstream of bigLam, including trap.RE.dummy.
-    #bigLam itself is excluded because it is updated manually below.
-    focal.nodes <- aggregate.nodes <- c()
-    focal.node.start <- integer(n.primary)
-    focal.node.n <- integer(n.primary)
-    aggregate.node.start <- integer(n.primary)
-    aggregate.node.n <- integer(n.primary)
+    
+    #Explicit observation-model node sets. Nodes are grouped by primary occasion
+    #with start/count vectors so run() can skip occasions where z[i,g]==0.
+    pd.nodes <- y.mark.nodes <- character(0)
+    lam.nodes <- y.mID.nodes <- character(0)
+    lam.mnoID.nodes <- y.mnoID.nodes <- character(0)
+    lam.um.nodes <- y.um.nodes <- character(0)
+    lam.unk.nodes <- y.unk.nodes <- character(0)
+    trap.RE.nodes <- character(0)
+    
+    pd.node.start <- integer(n.primary)
+    pd.node.n <- integer(n.primary)
+    y.mark.node.start <- integer(n.primary)
+    y.mark.node.n <- integer(n.primary)
+    lam.node.start <- integer(n.primary)
+    lam.node.n <- integer(n.primary)
+    y.mID.node.start <- integer(n.primary)
+    y.mID.node.n <- integer(n.primary)
+    lam.mnoID.node.start <- integer(n.primary)
+    lam.mnoID.node.n <- integer(n.primary)
+    y.mnoID.node.start <- integer(n.primary)
+    y.mnoID.node.n <- integer(n.primary)
+    lam.um.node.start <- integer(n.primary)
+    lam.um.node.n <- integer(n.primary)
+    y.um.node.start <- integer(n.primary)
+    y.um.node.n <- integer(n.primary)
+    lam.unk.node.start <- integer(n.primary)
+    lam.unk.node.n <- integer(n.primary)
+    y.unk.node.start <- integer(n.primary)
+    y.unk.node.n <- integer(n.primary)
+    trap.RE.node.start <- integer(n.primary)
+    trap.RE.node.n <- integer(n.primary)
+    
+    #Secondary-occasion indices by focal mark state. This removes mark.states[g,k]
+    #tests from run() and allows arbitrary within-primary mark loss and remarking.
+    k.marked <- k.unmarked <- integer(0)
+    k.marked.start <- integer(n.primary)
+    k.marked.n <- integer(n.primary)
+    k.unmarked.start <- integer(n.primary)
+    k.unmarked.n <- integer(n.primary)
+    
     for(g.setup in 1:n.primary){
-      z.dep <- model$getDependencies(paste0("z[",i,",",g.setup,"]"))
-      local.g <- calcNodes[calcNodes %in% z.dep]
+      pd.node.start[g.setup] <- length(pd.nodes)+1
+      y.mark.node.start[g.setup] <- length(y.mark.nodes)+1
+      lam.node.start[g.setup] <- length(lam.nodes)+1
+      y.mID.node.start[g.setup] <- length(y.mID.nodes)+1
+      lam.mnoID.node.start[g.setup] <- length(lam.mnoID.nodes)+1
+      y.mnoID.node.start[g.setup] <- length(y.mnoID.nodes)+1
+      lam.um.node.start[g.setup] <- length(lam.um.nodes)+1
+      y.um.node.start[g.setup] <- length(y.um.nodes)+1
+      lam.unk.node.start[g.setup] <- length(lam.unk.nodes)+1
+      y.unk.node.start[g.setup] <- length(y.unk.nodes)+1
+      trap.RE.node.start[g.setup] <- length(trap.RE.nodes)+1
+      k.marked.start[g.setup] <- length(k.marked)+1
+      k.unmarked.start[g.setup] <- length(k.unmarked)+1
       
-      #identify bigLam nodes for this primary occasion; these are updated manually
-      bigLam.g <- local.g[grepl("^bigLam\\.(marked|unmarked)\\[",local.g)]
-      
-      #anything downstream of bigLam is an aggregate observation term.
-      #This automatically includes lam.mnoID/um/unk, their likelihoods, and trap.RE.dummy.
-      aggregate.g <- character(0)
-      if(length(bigLam.g)>0){
-        aggregate.dep <- model$getDependencies(bigLam.g,self=FALSE)
-        aggregate.g <- local.g[local.g %in% aggregate.dep]
+      if(J.mark[g.setup]>0){
+        pd.nodes <- c(pd.nodes,
+                      model$expandNodeNames(paste0("pd[",i,",",g.setup,",1:",J.mark[g.setup],"]")))
+        y.mark.nodes <- c(y.mark.nodes,
+                          model$expandNodeNames(paste0("y.mark[",i,",",g.setup,",1:",J.mark[g.setup],"]")))
       }
       
-      #remaining occasion-specific dependencies are focal-individual terms
-      focal.g <- local.g[!local.g %in% c(bigLam.g,aggregate.g)]
-      
-      focal.node.start[g.setup] <- length(focal.nodes)+1
-      focal.node.n[g.setup] <- length(focal.g)
-      if(length(focal.g)>0){
-        focal.nodes <- c(focal.nodes,focal.g)
+      if(J.sight[g.setup]>0&K.sight[g.setup]>0){
+        lam.nodes <- c(lam.nodes,
+                       model$expandNodeNames(paste0("lam[",i,",",g.setup,",1:",J.sight[g.setup],"]")))
+        for(k.setup in 1:K.sight[g.setup]){
+          if(mark.states[g.setup,k.setup]==1){
+            k.marked <- c(k.marked,k.setup)
+            if(i<=n.marked.all){
+              y.mID.nodes <- c(y.mID.nodes,
+                               model$expandNodeNames(paste0("y.mID[",i,",",g.setup,",1:",J.sight[g.setup],",",k.setup,"]")))
+            }
+            lam.mnoID.nodes <- c(lam.mnoID.nodes,
+                                 model$expandNodeNames(paste0("lam.mnoID[",g.setup,",1:",J.sight[g.setup],",",k.setup,"]")))
+            y.mnoID.nodes <- c(y.mnoID.nodes,
+                               model$expandNodeNames(paste0("y.mnoID[",g.setup,",1:",J.sight[g.setup],",",k.setup,"]")))
+          }else{
+            k.unmarked <- c(k.unmarked,k.setup)
+            lam.um.nodes <- c(lam.um.nodes,
+                              model$expandNodeNames(paste0("lam.um[",g.setup,",1:",J.sight[g.setup],",",k.setup,"]")))
+            y.um.nodes <- c(y.um.nodes,
+                            model$expandNodeNames(paste0("y.um[",g.setup,",1:",J.sight[g.setup],",",k.setup,"]")))
+          }
+          #unknown-mark-status sightings always depend on the focal individual through
+          #either bigLam.marked or bigLam.unmarked
+          lam.unk.nodes <- c(lam.unk.nodes,
+                             model$expandNodeNames(paste0("lam.unk[",g.setup,",1:",J.sight[g.setup],",",k.setup,"]")))
+          y.unk.nodes <- c(y.unk.nodes,
+                           model$expandNodeNames(paste0("y.unk[",g.setup,",1:",J.sight[g.setup],",",k.setup,"]")))
+        }
+        #session-level integrated detector random-effect likelihood depends on both aggregate pools
+        trap.RE.nodes <- c(trap.RE.nodes,
+                           model$expandNodeNames(paste0("trap.RE.dummy[",g.setup,"]")))
       }
       
-      aggregate.node.start[g.setup] <- length(aggregate.nodes)+1
-      aggregate.node.n[g.setup] <- length(aggregate.g)
-      if(length(aggregate.g)>0){
-        aggregate.nodes <- c(aggregate.nodes,aggregate.g)
-      }
+      pd.node.n[g.setup] <- length(pd.nodes)-pd.node.start[g.setup]+1
+      y.mark.node.n[g.setup] <- length(y.mark.nodes)-y.mark.node.start[g.setup]+1
+      lam.node.n[g.setup] <- length(lam.nodes)-lam.node.start[g.setup]+1
+      y.mID.node.n[g.setup] <- length(y.mID.nodes)-y.mID.node.start[g.setup]+1
+      lam.mnoID.node.n[g.setup] <- length(lam.mnoID.nodes)-lam.mnoID.node.start[g.setup]+1
+      y.mnoID.node.n[g.setup] <- length(y.mnoID.nodes)-y.mnoID.node.start[g.setup]+1
+      lam.um.node.n[g.setup] <- length(lam.um.nodes)-lam.um.node.start[g.setup]+1
+      y.um.node.n[g.setup] <- length(y.um.nodes)-y.um.node.start[g.setup]+1
+      lam.unk.node.n[g.setup] <- length(lam.unk.nodes)-lam.unk.node.start[g.setup]+1
+      y.unk.node.n[g.setup] <- length(y.unk.nodes)-y.unk.node.start[g.setup]+1
+      trap.RE.node.n[g.setup] <- length(trap.RE.nodes)-trap.RE.node.start[g.setup]+1
+      k.marked.n[g.setup] <- length(k.marked)-k.marked.start[g.setup]+1
+      k.unmarked.n[g.setup] <- length(k.unmarked)-k.unmarked.start[g.setup]+1
     }
     # calcNodesNoSelf <- model$getDependencies(target, self = FALSE)
     # isStochCalcNodesNoSelf <- model$isStoch(calcNodesNoSelf)   ## should be made faster
@@ -130,129 +191,40 @@ sSamplerDcov <- nimbleFunction(
       s.cand <- c(rnorm(1,model$s[i,1],scale), rnorm(1,model$s[i,2],scale))
       inbox <- s.cand[1]< xlim[2] & s.cand[1]> xlim[1] & s.cand[2] < ylim[2] & s.cand[2] > ylim[1]
       if(inbox){
-        # OLD marked/unmarked-specific full observation + TrapRE update - replaced by unified alive-year graph update
-        # #get initial logprobs - not optimizing by considering if this is marked or unmarked i
-        # lp.initial.s <- model$getLogProb(s.nodes)
-        # lp.initial.y.mark <- model$getLogProb(y.mark.nodes)
-        # lp.initial.y.unk <- model$getLogProb(y.unk.nodes)
-        # lp.initial.y.um <- model$getLogProb(y.um.nodes)
-        # lp.initial.trap.RE <- model$getLogProb(trap.RE.nodes)
-        # if(i<=n.marked.all){ #if marked in at least one year
-        #   lp.initial.y.mID <- model$getLogProb(y.mID.nodes)
-        #   lp.initial.y.mnoID <- model$getLogProb(y.mnoID.nodes)
-        #   #pull these out of model object
-        #   bigLam.marked.initial <- model$bigLam.marked
-        #   bigLam.unmarked.initial <- model$bigLam.unmarked
-        #   #update proposed s
-        #   model$s[i, 1:2] <<- s.cand
-        #   lp.proposed.s <- model$calculate(s.nodes) #proposed logprob for s.nodes
-        #   #subtract these out before calculating lam
-        #   bigLam.marked.proposed <- bigLam.marked.initial
-        #   bigLam.unmarked.proposed <- bigLam.unmarked.initial
-        #   for(g2 in 1:n.sight.g){
-        #     g <- sight.g[g2]
-        #     if(model$z[i,g]==1){ #z.super always 1 here
-        #       for(k in 1:K.sight[g]){
-        #         bigLam.marked.proposed[g,1:J.sight[g],k] <- bigLam.marked.proposed[g,1:J.sight[g],k] - model$lam[i,g,1:J.sight[g]]*mark.states[g,k]
-        #         bigLam.unmarked.proposed[g,1:J.sight[g],k] <- bigLam.unmarked.proposed[g,1:J.sight[g],k] - model$lam[i,g,1:J.sight[g]]*(1-mark.states[g,k])
-        #         #make sure you didn't end up with any negative numbers due to machine precision
-        #         for(j in 1:J.sight[g]){
-        #           if(bigLam.marked.proposed[g,j,k]<0){
-        #             bigLam.marked.proposed[g,j,k] <- 0
-        #           }
-        #           if(bigLam.unmarked.proposed[g,j,k]<0){
-        #             bigLam.unmarked.proposed[g,j,k] <- 0
-        #           }
-        #         }
-        #       }
-        #     }
-        #   }
-        #   model$calculate(pd.nodes) #update pd nodes
-        #   model$calculate(lam.nodes) #update lam nodes
-        #   #add these in after calculating lam
-        #   for(g2 in 1:n.sight.g){
-        #     g <- sight.g[g2]
-        #     if(model$z[i,g]==1){
-        #       for(k in 1:K.sight[g]){
-        #         bigLam.marked.proposed[g,1:J.sight[g],k] <- bigLam.marked.proposed[g,1:J.sight[g],k] + model$lam[i,g,1:J.sight[g]]*mark.states[g,k]
-        #         bigLam.unmarked.proposed[g,1:J.sight[g],k] <- bigLam.unmarked.proposed[g,1:J.sight[g],k] + model$lam[i,g,1:J.sight[g]]*(1-mark.states[g,k])
-        #       }
-        #     }
-        #   }
-        #   #put bigLam.marked in model object
-        #   model$bigLam.marked <<- bigLam.marked.proposed
-        #   model$bigLam.unmarked <<- bigLam.unmarked.proposed
-        #   model$calculate(lam.mnoID.nodes) #update after bigLam
-        #   model$calculate(lam.um.nodes) #update after bigLam
-        #   model$calculate(lam.unk.nodes) #update after bigLam
-        #   lp.proposed.y.mark <- model$calculate(y.mark.nodes)
-        #   lp.proposed.y.mID <- model$calculate(y.mID.nodes)
-        #   lp.proposed.y.mnoID <- model$calculate(y.mnoID.nodes)
-        #   lp.proposed.y.um <- model$calculate(y.um.nodes)
-        #   lp.proposed.y.unk <- model$calculate(y.unk.nodes)
-        #   lp.proposed.trap.RE <- model$calculate(trap.RE.nodes)
-        #   lp.initial <- lp.initial.s + lp.initial.y.mark + lp.initial.y.mID + lp.initial.y.mnoID +
-        #     lp.initial.y.um + lp.initial.y.unk + lp.initial.trap.RE
-        #   lp.proposed <- lp.proposed.s + lp.proposed.y.mark + lp.proposed.y.mID + lp.proposed.y.mnoID +
-        #     lp.proposed.y.um + lp.proposed.y.unk + lp.proposed.trap.RE
-        # }else{ #else unmarked
-        #   #pull this out of model object
-        #   bigLam.unmarked.initial <- model$bigLam.unmarked
-        #   #update proposed s
-        #   model$s[i, 1:2] <<- s.cand
-        #   lp.proposed.s <- model$calculate(s.nodes) #proposed logprob for s.nodes
-        #   #subtract these out before calculating lam
-        #   bigLam.unmarked.proposed <- bigLam.unmarked.initial
-        #   for(g2 in 1:n.sight.g){ #z.super always 1 here
-        #     g <- sight.g[g2]
-        #     if(model$z[i,g]==1){
-        #       for(k in 1:K.sight[g]){
-        #         bigLam.unmarked.proposed[g,1:J.sight[g],k] <- bigLam.unmarked.proposed[g,1:J.sight[g],k] - model$lam[i,g,1:J.sight[g]]
-        #         #make sure you didn't end up with any negative numbers due to machine precision
-        #         for(j in 1:J.sight[g]){
-        #           if(bigLam.unmarked.proposed[g,j,k]<0){
-        #             bigLam.unmarked.proposed[g,j,k] <- 0
-        #           }
-        #         }
-        #       }
-        #     }
-        #   }
-        #   model$calculate(pd.nodes) #update pd nodes
-        #   model$calculate(lam.nodes) #update lam nodes
-        #   #add these in after calculating lam
-        #   for(g2 in 1:n.sight.g){
-        #     g <- sight.g[g2]
-        #     if(model$z[i,g]==1){
-        #       for(k in 1:K.sight[g]){
-        #         bigLam.unmarked.proposed[g,1:J.sight[g],k] <- bigLam.unmarked.proposed[g,1:J.sight[g],k] + model$lam[i,g,1:J.sight[g]]
-        #       }
-        #     }
-        #   }
-        #   #put bigLam in model object
-        #   model$bigLam.unmarked <<- bigLam.unmarked.proposed
-        #   model$calculate(lam.um.nodes) #update after bigLam
-        #   model$calculate(lam.unk.nodes) #update after bigLam
-        #   lp.proposed.y.mark <- model$calculate(y.mark.nodes)
-        #   lp.proposed.y.um <- model$calculate(y.um.nodes)
-        #   lp.proposed.y.unk <- model$calculate(y.unk.nodes)
-        #   lp.proposed.trap.RE <- model$calculate(trap.RE.nodes)
-        #   lp.initial <- lp.initial.s + lp.initial.y.mark + lp.initial.y.um + lp.initial.y.unk + lp.initial.trap.RE
-        #   lp.proposed <- lp.proposed.s + lp.proposed.y.mark + lp.proposed.y.um + lp.proposed.y.unk + lp.proposed.trap.RE
-        # }
-        #initial log probability: always-active s/density/telemetry terms
-        #plus focal and aggregate observation terms only in primary occasions where z[i,g]=1
+        #initial log probability for s/density/telemetry terms and observation likelihoods
+        #only in primary occasions where this individual is alive
         lp.initial <- model$getLogProb(s.nodes)
         for(g in 1:n.primary){
           if(model$z[i,g]==1){
-            if(focal.node.n[g]>0){
-              node.start <- focal.node.start[g]
-              node.end <- node.start+focal.node.n[g]-1
-              lp.initial <- lp.initial+model$getLogProb(focal.nodes[node.start:node.end])
+            if(y.mark.node.n[g]>0){
+              node.start <- y.mark.node.start[g]
+              node.end <- node.start+y.mark.node.n[g]-1
+              lp.initial <- lp.initial+model$getLogProb(y.mark.nodes[node.start:node.end])
             }
-            if(aggregate.node.n[g]>0){
-              node.start <- aggregate.node.start[g]
-              node.end <- node.start+aggregate.node.n[g]-1
-              lp.initial <- lp.initial+model$getLogProb(aggregate.nodes[node.start:node.end])
+            if(y.mID.node.n[g]>0){
+              node.start <- y.mID.node.start[g]
+              node.end <- node.start+y.mID.node.n[g]-1
+              lp.initial <- lp.initial+model$getLogProb(y.mID.nodes[node.start:node.end])
+            }
+            if(y.mnoID.node.n[g]>0){
+              node.start <- y.mnoID.node.start[g]
+              node.end <- node.start+y.mnoID.node.n[g]-1
+              lp.initial <- lp.initial+model$getLogProb(y.mnoID.nodes[node.start:node.end])
+            }
+            if(y.um.node.n[g]>0){
+              node.start <- y.um.node.start[g]
+              node.end <- node.start+y.um.node.n[g]-1
+              lp.initial <- lp.initial+model$getLogProb(y.um.nodes[node.start:node.end])
+            }
+            if(y.unk.node.n[g]>0){
+              node.start <- y.unk.node.start[g]
+              node.end <- node.start+y.unk.node.n[g]-1
+              lp.initial <- lp.initial+model$getLogProb(y.unk.nodes[node.start:node.end])
+            }
+            if(trap.RE.node.n[g]>0){
+              node.start <- trap.RE.node.start[g]
+              node.end <- node.start+trap.RE.node.n[g]-1
+              lp.initial <- lp.initial+model$getLogProb(trap.RE.nodes[node.start:node.end])
             }
           }
         }
@@ -265,8 +237,12 @@ sSamplerDcov <- nimbleFunction(
         for(g2 in 1:n.sight.g){
           g <- sight.g[g2]
           if(model$z[i,g]==1){ #z.super always 1 here
-            for(k in 1:K.sight[g]){
-              if(mark.states[g,k]==1){
+            #secondary occasions when focal individual is marked
+            if(k.marked.n[g]>0){
+              k.start <- k.marked.start[g]
+              k.end <- k.start+k.marked.n[g]-1
+              for(k2 in k.start:k.end){
+                k <- k.marked[k2]
                 for(j in 1:J.sight[g]){
                   bigLam.old <- bigLam.marked.proposed[g,j,k]
                   bigLam.marked.proposed[g,j,k] <- bigLam.old-model$lam[i,g,j]
@@ -283,7 +259,14 @@ sSamplerDcov <- nimbleFunction(
                     bigLam.marked.proposed[g,j,k] <- 0
                   }
                 }
-              }else{
+              }
+            }
+            #secondary occasions when focal individual is unmarked
+            if(k.unmarked.n[g]>0){
+              k.start <- k.unmarked.start[g]
+              k.end <- k.start+k.unmarked.n[g]-1
+              for(k2 in k.start:k.end){
+                k <- k.unmarked[k2]
                 for(j in 1:J.sight[g]){
                   bigLam.old <- bigLam.unmarked.proposed[g,j,k]
                   bigLam.unmarked.proposed[g,j,k] <- bigLam.old-model$lam[i,g,j]
@@ -305,37 +288,102 @@ sSamplerDcov <- nimbleFunction(
           }
         }
         
-        #update proposed s and all focal observation terms in primary occasions where z[i,g]=1
+        #update proposed s, then the direct focal-individual observation model
         model$s[i, 1:2] <<- s.cand
         lp.proposed <- model$calculate(s.nodes)
         for(g in 1:n.primary){
-          if(model$z[i,g]==1&focal.node.n[g]>0){
-            node.start <- focal.node.start[g]
-            node.end <- node.start+focal.node.n[g]-1
-            lp.proposed <- lp.proposed+model$calculate(focal.nodes[node.start:node.end])
+          if(model$z[i,g]==1){
+            #marking: s -> pd -> y.mark
+            if(pd.node.n[g]>0){
+              node.start <- pd.node.start[g]
+              node.end <- node.start+pd.node.n[g]-1
+              model$calculate(pd.nodes[node.start:node.end])
+            }
+            if(y.mark.node.n[g]>0){
+              node.start <- y.mark.node.start[g]
+              node.end <- node.start+y.mark.node.n[g]-1
+              lp.proposed <- lp.proposed+model$calculate(y.mark.nodes[node.start:node.end])
+            }
+            #identified sightings: s -> lam -> y.mID; y.mID nodes are retained only for marked k
+            if(lam.node.n[g]>0){
+              node.start <- lam.node.start[g]
+              node.end <- node.start+lam.node.n[g]-1
+              model$calculate(lam.nodes[node.start:node.end])
+            }
+            if(y.mID.node.n[g]>0){
+              node.start <- y.mID.node.start[g]
+              node.end <- node.start+y.mID.node.n[g]-1
+              lp.proposed <- lp.proposed+model$calculate(y.mID.nodes[node.start:node.end])
+            }
           }
         }
         
-        #add this individual's new lam contribution back into the aggregate rates
+        #add this individual's new lam contribution back into the appropriate aggregate pool
         for(g2 in 1:n.sight.g){
           g <- sight.g[g2]
           if(model$z[i,g]==1){
-            for(k in 1:K.sight[g]){
-              bigLam.marked.proposed[g,1:J.sight[g],k] <- bigLam.marked.proposed[g,1:J.sight[g],k] + model$lam[i,g,1:J.sight[g]]*mark.states[g,k]
-              bigLam.unmarked.proposed[g,1:J.sight[g],k] <- bigLam.unmarked.proposed[g,1:J.sight[g],k] + model$lam[i,g,1:J.sight[g]]*(1-mark.states[g,k])
+            if(k.marked.n[g]>0){
+              k.start <- k.marked.start[g]
+              k.end <- k.start+k.marked.n[g]-1
+              for(k2 in k.start:k.end){
+                k <- k.marked[k2]
+                bigLam.marked.proposed[g,1:J.sight[g],k] <- bigLam.marked.proposed[g,1:J.sight[g],k] + model$lam[i,g,1:J.sight[g]]
+              }
+            }
+            if(k.unmarked.n[g]>0){
+              k.start <- k.unmarked.start[g]
+              k.end <- k.start+k.unmarked.n[g]-1
+              for(k2 in k.start:k.end){
+                k <- k.unmarked[k2]
+                bigLam.unmarked.proposed[g,1:J.sight[g],k] <- bigLam.unmarked.proposed[g,1:J.sight[g],k] + model$lam[i,g,1:J.sight[g]]
+              }
             }
           }
         }
         model$bigLam.marked <<- bigLam.marked.proposed
         model$bigLam.unmarked <<- bigLam.unmarked.proposed
         
-        #update aggregate observation terms only in primary occasions where this individual's contribution changed.
-        #trap.RE.dummy is downstream of bigLam, so it is included here automatically.
+        #update aggregate sighting likelihoods whose rates changed for this individual
         for(g in 1:n.primary){
-          if(model$z[i,g]==1&aggregate.node.n[g]>0){
-            node.start <- aggregate.node.start[g]
-            node.end <- node.start+aggregate.node.n[g]-1
-            lp.proposed <- lp.proposed+model$calculate(aggregate.nodes[node.start:node.end])
+          if(model$z[i,g]==1){
+            #marked no-ID sightings only change on secondary occasions when focal individual is marked
+            if(lam.mnoID.node.n[g]>0){
+              node.start <- lam.mnoID.node.start[g]
+              node.end <- node.start+lam.mnoID.node.n[g]-1
+              model$calculate(lam.mnoID.nodes[node.start:node.end])
+            }
+            if(y.mnoID.node.n[g]>0){
+              node.start <- y.mnoID.node.start[g]
+              node.end <- node.start+y.mnoID.node.n[g]-1
+              lp.proposed <- lp.proposed+model$calculate(y.mnoID.nodes[node.start:node.end])
+            }
+            #unmarked sightings only change on secondary occasions when focal individual is unmarked
+            if(lam.um.node.n[g]>0){
+              node.start <- lam.um.node.start[g]
+              node.end <- node.start+lam.um.node.n[g]-1
+              model$calculate(lam.um.nodes[node.start:node.end])
+            }
+            if(y.um.node.n[g]>0){
+              node.start <- y.um.node.start[g]
+              node.end <- node.start+y.um.node.n[g]-1
+              lp.proposed <- lp.proposed+model$calculate(y.um.nodes[node.start:node.end])
+            }
+            #unknown-mark-status sightings change on every secondary occasion
+            if(lam.unk.node.n[g]>0){
+              node.start <- lam.unk.node.start[g]
+              node.end <- node.start+lam.unk.node.n[g]-1
+              model$calculate(lam.unk.nodes[node.start:node.end])
+            }
+            if(y.unk.node.n[g]>0){
+              node.start <- y.unk.node.start[g]
+              node.end <- node.start+y.unk.node.n[g]-1
+              lp.proposed <- lp.proposed+model$calculate(y.unk.nodes[node.start:node.end])
+            }
+            if(trap.RE.node.n[g]>0){
+              node.start <- trap.RE.node.start[g]
+              node.end <- node.start+trap.RE.node.n[g]-1
+              lp.proposed <- lp.proposed+model$calculate(trap.RE.nodes[node.start:node.end])
+            }
           }
         }
         log.MH.ratio <- lp.proposed - lp.initial
@@ -345,7 +393,7 @@ sSamplerDcov <- nimbleFunction(
         } else {
           copy(from = mvSaved, to = model, row = 1, nodes = calcNodes, logProb = TRUE)
         }
-        if(adaptive){ #we only tune for z.super=1 proposals
+        if(adaptive){ #tune RW proposals when z.super=1
           adaptiveProcedure(accept)
         }
       }
