@@ -191,6 +191,11 @@ sim.JS.SMR.Dcov.Generalized <- function(D.beta0=NA,D.beta1=NA,D.cov=NA,InSS=NA,
         for(i in mark.g){
           mark.life <- rtruncpois(1,lambda=mark.g.pars[1],lower=mark.g.pars[2],upper=mark.g.pars[3])
           end.g <- min(g+mark.life-1,n.primary)
+          already.marked <- mark.states[i,g]==1
+          if(mark.protocol==2&already.marked){
+            mark.states[i,g:n.primary] <- 0
+            tel.z.states[i,g:n.primary] <- NA
+          }
           mark.states[i,g:end.g] <- 1
           tel.z.states[i,g:end.g] <- 1
           if(mark.life>1&mark.protocol==1){ #if we don't replace marks on capture, make ineligible

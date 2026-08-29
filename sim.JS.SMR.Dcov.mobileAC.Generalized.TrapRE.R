@@ -237,6 +237,11 @@ sim.JS.SMR.Dcov.mobileAC.Generalized.TrapRE <- function(D.beta0=NA,D.beta1=NA,D.
         for(i in mark.g){
           mark.life <- rtruncpois(1,lambda=mark.g.pars[1],lower=mark.g.pars[2],upper=mark.g.pars[3])
           end.g <- min(g+mark.life-1,n.primary)
+          already.marked <- mark.states[i,g]==1
+          if(mark.protocol==2&already.marked){
+            mark.states[i,g:n.primary] <- 0
+            tel.z.states[i,g:n.primary] <- NA
+          }
           mark.states[i,g:end.g] <- 1
           tel.z.states[i,g:end.g] <- 1
           if(mark.life>1&mark.protocol==1){ #if we don't replace marks on capture, make ineligible
@@ -348,44 +353,11 @@ sim.JS.SMR.Dcov.mobileAC.Generalized.TrapRE <- function(D.beta0=NA,D.beta1=NA,D.
     }
   }
   
-  #simulate telemetry locations
-  # if(n.tel.locs>0&sum(y.mark)>0){
-  #   n.tel.sessions <- rowSums(tel.z.states==1,na.rm=TRUE)
-  #   n.tel.sessions <- n.tel.sessions[ID.marked.all]
-  #   n.tel.inds <- sum(n.tel.sessions>0)
-  #   tel.session <- matrix(NA,n.tel.inds,n.primary)
-  #   max.n.tel.sessions <- max(n.tel.sessions)
-  #   locs <- array(NA,dim=c(n.tel.inds,max.n.tel.sessions,n.tel.locs,2))
-  #   for(i in 1:n.tel.inds){
-  #     tel.session[i,1:n.tel.sessions[i]] <- which(tel.z.states[ID.marked.all[i],]==1)
-  #     for(g in 1:n.tel.sessions[i]){
-  #       #if adding movement, reference correct s primary occasions
-  #       locs[i,g,,] <- c(rnorm(n.tel.locs,s[ID.marked.all[i],1],sigma[tel.session[i,g]]),
-  #                        rnorm(n.tel.locs,s[ID.marked.all[i],2],sigma[tel.session[i,g]]))
-  #     }
-  #   }
-  #   n.locs.ind <- apply(!is.na(locs[,,,1]),c(1,2),sum)
-  #   if(dim(locs)[2]==1){
-  #     n.locs.ind <- matrix(rowSums(n.locs.ind),ncol=1)
-  #   }
-  # }else{
-  #   print("no individuals captured, no telemetry")
-  #   locs <- tel.session <- NA
-  #   n.tel.inds <- 0
-  #   n.tel.sessions <- NA
-  #   n.locs.ind <- NA
-  # }
-  
   mark.states <- mark.states[ID.marked.all,,drop=FALSE]
   tel.z.states <- tel.z.states[ID.marked.all,,drop=FALSE]
   
   #renumber ID.marked and ID.marked.all in new order after discarding unmarked guys in numbering
   #reorder y, z, s first
-  # ID.unmarked.all <- setdiff(1:N.super,ID.marked.all)
-  # s <- s[c(ID.marked.all,ID.unmarked.all),]
-  # z <- z[c(ID.marked.all,ID.unmarked.all),]
-  # y.mark <- y.mark[c(ID.marked.all,ID.unmarked.all),,]
-  # y <- y[c(ID.marked.all,ID.unmarked.all),,]
   ID.cap.unmarked.all <- setdiff(ID.cap.all,ID.marked.all)
   ID.unobserved.all <- setdiff(1:N.super,c(ID.marked.all,ID.cap.unmarked.all))
   ID.order <- c(ID.marked.all,ID.cap.unmarked.all,ID.unobserved.all)
