@@ -238,9 +238,19 @@ sim.JS.SMR.Dcov.Generalized.Interspersed <- function(D.beta0=NA,D.beta1=NA,D.cov
           y.mark.i.g <- apply(y.mark[i,g,,1:K.mark[g],drop=FALSE],4,sum)
           first.mark.k <- which(y.mark.i.g>0)[1]
           first.global.k <- which(K.order[[g]]=="M")[first.mark.k]
+          already.marked <- mark.states2D[i,g]==1
+          if(mark.protocol==2&already.marked){
+            mark.states2D[i,g:n.primary] <- 0
+            tel.z.states[i,g:n.primary] <- NA
+            mark.start.global[i,g:n.primary] <- NA
+          }
           mark.states2D[i,g:end.g] <- 1
           tel.z.states[i,g:end.g] <- 1
-          mark.start.global[i,g] <- first.global.k
+          if(already.marked){
+            mark.start.global[i,g] <- 0
+          }else{
+            mark.start.global[i,g] <- first.global.k
+          }
           if(end.g>g){
             mark.start.global[i,(g+1):end.g] <- 0
           }
