@@ -326,14 +326,14 @@ sSampler2 <- nimbleFunction(
     ## control list extraction
     # logScale            <- extractControlElement(control, 'log',                 FALSE)
     # reflective          <- extractControlElement(control, 'reflective',          FALSE)
-    adaptive            <- extractControlElement(control, 'adaptive',            TRUE)
+    adaptive            <- extractControlElement(control, 'adaptive',            FALSE)
     adaptInterval       <- extractControlElement(control, 'adaptInterval',       200)
     adaptFactorExponent <- extractControlElement(control, 'adaptFactorExponent', 0.8)
     scale               <- extractControlElement(control, 'scale',               1)
     ## node list generation
     # targetAsScalar <- model$expandNodeNames(target, returnScalarComponents = TRUE)
     # calcNodes <- model$getDependencies(target)
-    calcNodes <- control$calcNodes
+    s.nodes <- control$s.nodes
     # calcNodesNoSelf <- model$getDependencies(target, self = FALSE)
     # isStochCalcNodesNoSelf <- model$isStoch(calcNodesNoSelf)   ## should be made faster
     # calcNodesNoSelfDeterm <- calcNodesNoSelf[!isStochCalcNodesNoSelf]
@@ -364,15 +364,15 @@ sSampler2 <- nimbleFunction(
       s.cand <- c(rnorm(1,model$s[i,g,1],scale), rnorm(1,model$s[i,g,2],scale))
       inbox <- s.cand[1]< xlim[2] & s.cand[1]> xlim[1] & s.cand[2] < ylim[2] & s.cand[2] > ylim[1]
       if(inbox){
-        model_lp_initial <- model$getLogProb(calcNodes)
+        model_lp_initial <- model$getLogProb(s.nodes)
         model$s[i,g,1:2] <<- s.cand
-        model_lp_proposed <- model$calculate(calcNodes)
+        model_lp_proposed <- model$calculate(s.nodes)
         log_MH_ratio <- model_lp_proposed - model_lp_initial
         accept <- decide(log_MH_ratio)
         if(accept) {
-          copy(from = model, to = mvSaved, row = 1, nodes = calcNodes, logProb = TRUE)
+          copy(from = model, to = mvSaved, row = 1, nodes = s.nodes, logProb = TRUE)
         } else {
-          copy(from = mvSaved, to = model, row = 1, nodes = calcNodes, logProb = TRUE)
+          copy(from = mvSaved, to = model, row = 1, nodes = s.nodes, logProb = TRUE)
         }
         if(adaptive){ #we only tune for z=0 proposals
           adaptiveProcedure(accept)
@@ -540,15 +540,15 @@ sSampler3 <- nimbleFunction(
       inbox <- s.cand[1] < xlim[2] & s.cand[1] > xlim[1] & s.cand[2] < ylim[2] & s.cand[2] > ylim[1]
       if(inbox){
         if(model$z[i,g]==0){
-          model_lp_initial <- model$getLogProb(calcNodes)
+          model_lp_initial <- model$getLogProb(s.nodes)
           model$s[i,g,1:2] <<- s.cand
-          model_lp_proposed <- model$calculate(calcNodes)
+          model_lp_proposed <- model$calculate(s.nodes)
           log_MH_ratio <- model_lp_proposed - model_lp_initial
           accept <- decide(log_MH_ratio)
           if(accept){
-            copy(from=model,to=mvSaved,row=1,nodes=calcNodes,logProb=TRUE)
+            copy(from=model,to=mvSaved,row=1,nodes=s.nodes,logProb=TRUE)
           }else{
-            copy(from=mvSaved,to=model,row=1,nodes=calcNodes,logProb=TRUE)
+            copy(from=mvSaved,to=model,row=1,nodes=s.nodes,logProb=TRUE)
           }
         }else{
           #initial log probability for movement/telemetry terms and affected observation likelihoods

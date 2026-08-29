@@ -630,7 +630,7 @@ for(i in 1:M){
     conf$addSampler(target=s.target,
                     type='sSampler2',
                     control=list(i=i,g=g,xlim=xlim,ylim=ylim,
-                                 calcNodes=calcNodes,scale=1),
+                                 s.nodes=s.nodes,scale=1),
                     silent=TRUE)
     #scale parameter here is just the starting scale. It will be tuned.
   }
