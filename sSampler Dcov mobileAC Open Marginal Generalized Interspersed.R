@@ -151,7 +151,7 @@ sSampler1 <- nimbleFunction(
           #secondary occasions when focal individual is unmarked
           if(n.k.unmarked>0){
             for(k2 in 1:n.k.unmarked){
-              k <- k.unmarked[k2]3
+              k <- k.unmarked[k2]
               for(j in 1:J.sight[g]){
                 bigLam.old <- bigLam.unmarked.proposed[g,j,k]
                 bigLam.unmarked.proposed[g,j,k] <- bigLam.old-model$lam[i,g,j]

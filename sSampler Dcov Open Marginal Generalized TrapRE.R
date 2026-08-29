@@ -244,6 +244,7 @@ sSamplerDcov <- nimbleFunction(
                 }else{
                   lp.proposed.y.um <- lp.proposed.y.um+model$calculate(y.um.nodes[g2])
                 }
+                lp.proposed.y.unk <- lp.proposed.y.unk+model$calculate(y.unk.nodes[g2]) #FIX
                 lp.proposed.trap.RE <- lp.proposed.trap.RE+model$calculate(trap.RE.nodes[g2])
               }
             }
