@@ -123,6 +123,7 @@ cells <- matrix(1:nrow(dSS),nrow=length(x.vals),ncol=length(y.vals))
 n.cells <- nrow(dSS)
 n.cells.x <- length(x.vals)
 n.cells.y <- length(y.vals)
+avail.z <- qnorm(1-1e-8) #standard-normal cutoff for trimming negligible movement availability outside +/- avail.z SD
 
 #for plotting, making mask
 X.mark.all <- X.sight.all <- matrix(NA,nrow=0,ncol=2)
@@ -183,7 +184,7 @@ data <- sim.JS.SMR.Dcov.mobileAC.Generalized.TrapRE(D.beta0=D.beta0,D.beta1=D.be
                                                     p0=p0,lam0=lam0,sigma=sigma,theta.d=theta.d,
                                                     sigma.move=sigma.move,rsf.beta=rsf.beta,
                                                     K.mark=K.mark,K.sight=K.sight,
-                                                    X.mark=X.mark,X.sight=X.sight,xlim=xlim,ylim=ylim,res=res,
+                                                    X.mark=X.mark,X.sight=X.sight,xlim=xlim,ylim=ylim,res=res,avail.z=avail.z,
                                                     mark.g.pars=mark.g.pars,mark.protocol=mark.protocol,
                                                     p.mark=p.mark,n.tel.locs=n.tel.locs)
 
@@ -383,6 +384,9 @@ if(length(idx)>0){
 }
 tau <- data$tau
 tau.move <- data$tau.move
+avail.z <- qnorm(1-1e-8) #standard-normal cutoff for trimming negligible movement availability outside +/- avail.z SD
+x.vals.edges <- c(x.vals-res/2,x.vals[n.cells.x]+0.5*res)
+y.vals.edges <- c(y.vals-res/2,y.vals[n.cells.y]+0.5*res)
 
 #Need some inits to initialize data
 #Use reasonable inits for lam0 and sigma since we check to make sure initial observation
@@ -391,7 +395,8 @@ inits <- list(p0=rep(0.1,n.primary),lam0=rep(0.25,n.primary),#initializing with 
               sigma=rep(0.5,n.primary),theta.d=rep(10,n.primary),
               sigma.move=2,D.beta1=0.5,rsf.beta=0.5) #single sigma.move, D.beta1, rsf.beta
 #This function structures the simulated data to fit the model in Nimble (some more restructing below)
-nimbuild <- init.SMR.Dcov.mobileAC.Open.Generalized.TrapRE(data,inits,M=M)
+nimbuild <- init.SMR.Dcov.mobileAC.Open.Generalized.TrapRE(data,inits,M=M,x.vals.edges=x.vals.edges,
+                                                           y.vals.edges=y.vals.edges,avail.z=avail.z)
 
 #plot to check s inits by primary occasion
 for(g in 1:n.primary){
@@ -448,7 +453,8 @@ constants <- list(n.primary=n.primary,M=M,J.mark=J.mark,J.sight=J.sight,
                   tel.ID=data$tel.ID,n.tel.inds=data$n.tel.inds,n.locs.ind=data$n.locs.ind,
                   mark.g=mark.g,sight.g=sight.g,n.mark.g=n.mark.g,
                   n.sight.g=n.sight.g,n.cells=n.cells,n.cells.x=n.cells.x,
-                  n.cells.y=n.cells.y,res=res,x.vals=x.vals,y.vals=y.vals,xlim=xlim,ylim=ylim,
+                  n.cells.y=n.cells.y,res=res,x.vals.edges=x.vals.edges,y.vals.edges=y.vals.edges,
+                  avail.z=avail.z,xlim=xlim,ylim=ylim,
                   cellArea=cellArea)
 #inits for Nimble
 Niminits <- list(N=nimbuild$N,N.survive=nimbuild$N.survive,N.recruit=nimbuild$N.recruit,
@@ -514,8 +520,8 @@ conf$addSampler(target = c("z"),
                                                  mark.g=mark.g,sight.g=sight.g,
                                                  n.mark.g=n.mark.g,n.sight.g=n.sight.g,
                                                  cells=cells.double,dSS=dSS,res=res,n.cells=n.cells,
-                                                 xlim=xlim,ylim=ylim,x.vals=x.vals,y.vals=y.vals,
-                                                 n.cells.x=n.cells.x,n.cells.y=n.cells.y,
+                                                 xlim=xlim,ylim=ylim,x.vals.edges=x.vals.edges,y.vals.edges=y.vals.edges,
+                                                 avail.z=avail.z,n.cells.x=n.cells.x,n.cells.y=n.cells.y,
                                                  mark.states=nimbuild$mark.states,
                                                  tel.z.states=nimbuild$tel.z.states,
                                                  z.super.ups=z.super.ups,y2D=nimbuild$y2D,
@@ -543,7 +549,9 @@ for(i in 1:M){
     s.nodes <- Rmodel$expandNodeNames(s.target)
     if(g<n.primary){
       s.nodes <- c(s.nodes,
-                   Rmodel$expandNodeNames(paste0("avail.dist[",i,",",g,",1:",n.cells,"]")),
+                   Rmodel$expandNodeNames(paste0("avail.x[",i,",",g,",1:",n.cells.x,"]")),
+                   Rmodel$expandNodeNames(paste0("avail.y[",i,",",g,",1:",n.cells.y,"]")),
+                   Rmodel$expandNodeNames(paste0("use.denom[",i,",",g,"]")),
                    Rmodel$expandNodeNames(paste0("s[",i,",",g+1,",1:2]")))
     }
     loc.nodes <- c()
@@ -626,7 +634,9 @@ for(i in 1:M){
 #     s.nodes <- Rmodel$expandNodeNames(s.target)
 #     if(g<n.primary){
 #       s.nodes <- c(s.nodes,
-#                    Rmodel$expandNodeNames(paste0("avail.dist[",i,",",g,",1:",n.cells,"]")),
+#                    Rmodel$expandNodeNames(paste0("avail.x[",i,",",g,",1:",n.cells.x,"]")),
+#                    Rmodel$expandNodeNames(paste0("avail.y[",i,",",g,",1:",n.cells.y,"]")),
+#                    Rmodel$expandNodeNames(paste0("use.denom[",i,",",g,"]")),
 #                    Rmodel$expandNodeNames(paste0("s[",i,",",g+1,",1:2]")))
 #     }
 #     loc.nodes <- c()
@@ -724,7 +734,7 @@ Cmcmc <- compileNimble(Rmcmc,project=Rmodel)
 
 # Run the model.
 start.time2 <- Sys.time()
-Cmcmc$run(2500,reset=FALSE) #can extend run by rerunning this line
+Cmcmc$run(500,reset=FALSE) #can extend run by rerunning this line
 end.time <- Sys.time()
 time1 <- end.time-start.time  # total time for compilation, replacing samplers, and fitting
 time2 <- end.time-start.time2 # post-compilation run time

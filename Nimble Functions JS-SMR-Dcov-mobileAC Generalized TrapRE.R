@@ -39,33 +39,22 @@ rHab1 <- nimbleFunction(
 )
 
 dHabMove <- nimbleFunction(
-  run = function(x = double(1),s.prev = double(1),rsf = double(1),avail.dist = double(1),dSS = double(2),
-                 cells = double(2),res = double(0),sigma.move = double(0),z.super = double(0),
-                 log = integer(0)){
+  run = function(x = double(1),s.prev = double(1),rsf = double(1),avail.x = double(1),avail.y = double(1),
+                 use.denom = double(0),dSS = double(2),res = double(0),
+                 sigma.move = double(0),z.super = double(0),log = integer(0)){
     returnType(double(0))
     if(z.super==1){
-      #find cell with lookup table
-      cell <- cells[trunc(x[1]/res)+1,trunc(x[2]/res)+1]
-      #get cell bounds
-      x.min <- dSS[cell,1] - res/2
-      x.max <- dSS[cell,1] + res/2
-      y.min <- dSS[cell,2] - res/2
-      y.max <- dSS[cell,2] + res/2
-      # cell selection logProb
-      # logProb.cell <- log(use.dist[cell])
-      #more efficient to not store use.dist, below is equivalent
-      n.cells <- nimDim(rsf)[1]
-      use.denom <- 0
-      for(c in 1:n.cells){
-        use.denom <- use.denom + rsf[c]*avail.dist[c]
+      cell.x <- trunc(x[1]/res)+1
+      cell.y <- trunc(x[2]/res)+1
+      n.cells.x <- nimDim(avail.x)[1]
+      cell <- cell.x+(cell.y-1)*n.cells.x
+      if(avail.x[cell.x]>0 & avail.y[cell.y]>0 & rsf[cell]>0 & use.denom>0){
+        logProb <- log(rsf[cell])-log(use.denom) +
+          dnorm(x[1],s.prev[1],sigma.move,log=TRUE) +
+          dnorm(x[2],s.prev[2],sigma.move,log=TRUE)
+      }else{
+        logProb <- -Inf
       }
-      logProb.cell <- log(rsf[cell]*avail.dist[cell]/use.denom)
-      # continuous within-cell location logProb
-      logProb.x <- dnorm(x[1],s.prev[1],sigma.move, log=TRUE) -
-        log(pnorm(x.max,s.prev[1],sigma.move) - pnorm(x.min,s.prev[1],sigma.move))
-      logProb.y <- dnorm(x[2],s.prev[2],sigma.move,log=TRUE) -
-        log(pnorm(y.max,s.prev[2],sigma.move) - pnorm(y.min,s.prev[2],sigma.move))
-      logProb <- logProb.cell + logProb.x + logProb.y
     }else{
       logProb <- 0
     }
@@ -78,12 +67,21 @@ dHabMove <- nimbleFunction(
 )
 
 rHabMove <- nimbleFunction(
-  run = function(n = integer(0),s.prev = double(1),rsf = double(1),avail.dist = double(1),dSS = double(2),
-                 cells = double(2),res = double(0),sigma.move = double(0),z.super = double(0)) {
+  run = function(n = integer(0),s.prev = double(1),rsf = double(1),avail.x = double(1),avail.y = double(1),
+                 use.denom = double(0),dSS = double(2),res = double(0),
+                 sigma.move = double(0),z.super = double(0)) {
     returnType(double(1))
     if(z.super==1){
-      n.cells <- nimDim(dSS)[1]
-      use.dist <- getUse(rsf=rsf,avail.dist=avail.dist,z.super=1)
+      n.cells.x <- nimDim(avail.x)[1]
+      n.cells.y <- nimDim(avail.y)[1]
+      n.cells <- n.cells.x*n.cells.y
+      use.dist <- rep(0,n.cells)
+      for(j in 1:n.cells.y){
+        for(i in 1:n.cells.x){
+          cell <- i+(j-1)*n.cells.x
+          use.dist[cell] <- rsf[cell]*avail.x[i]*avail.y[j]/use.denom
+        }
+      }
       s.cell <- rcat(1,use.dist[1:n.cells])
       x.min <- dSS[s.cell,1] - res/2
       x.max <- dSS[s.cell,1] + res/2
@@ -102,85 +100,70 @@ rHabMove <- nimbleFunction(
   }
 )
 
-getAvail <- nimbleFunction(
-  run = function(s = double(1),sigma=double(0),res=double(0),x.vals=double(1),y.vals=double(1),
-                 n.cells.x=integer(0),n.cells.y=integer(0),z.super=double(0)) {
+getAvail1D <- nimbleFunction(
+  run = function(s = double(0),sigma=double(0),res=double(0),vals.edges=double(1),
+                 n.cells=integer(0),avail.z=double(0),z.super=double(0)) {
     returnType(double(1))
+    avail <- rep(0,n.cells)
     if(z.super==1){
-      avail.dist.x <- rep(0,n.cells.x)
-      avail.dist.y <- rep(0,n.cells.y)
-      delta <- 1e-8 #this sets the degree of trimming used to get individual availability distributions
-      x.limits <- qnorm(c(delta,1-delta),mean=s[1],sd=sigma)
-      y.limits <- qnorm(c(delta,1-delta),mean=s[2],sd=sigma)
-      #convert to grid edges instead of centroids
-      x.vals.edges <- c(x.vals - res/2, x.vals[n.cells.x]+0.5*res)
-      y.vals.edges <- c(y.vals - res/2, y.vals[n.cells.y]+0.5*res)
-      #trim in x and y direction
-      if(x.vals.edges[1]<x.limits[1]){
-        x.start <- floor((x.limits[1] - x.vals.edges[1]) / res) + 1
+      lower <- s-sigma*avail.z
+      upper <- s+sigma*avail.z
+      if(vals.edges[1]<lower){
+        idx.start <- floor((lower-vals.edges[1])/res)+1
       }else{
-        x.start <- 1
+        idx.start <- 1
       }
-      if(x.vals.edges[n.cells.x]>x.limits[2]){
-        x.stop <- ceiling((x.limits[2] - x.vals.edges[1]) / res)
+      if(vals.edges[n.cells]>upper){
+        idx.stop <- ceiling((upper-vals.edges[1])/res)
       }else{
-        x.stop <- n.cells.x
+        idx.stop <- n.cells
       }
-      if(y.vals.edges[1]<y.limits[1]){
-        y.start <- floor((y.limits[1] - y.vals.edges[1]) / res) + 1
-      }else{
-        y.start <- 1
+      pnorm.vals <- rep(0,n.cells+1)
+      for(l in idx.start:(idx.stop+1)){
+        pnorm.vals[l] <- pnorm(vals.edges[l],mean=s,sd=sigma)
       }
-      if(y.vals.edges[n.cells.y]>y.limits[2]){
-        y.stop <- ceiling((y.limits[2] - y.vals.edges[1]) / res)
-      }else{
-        y.stop <- n.cells.y
+      for(l in idx.start:idx.stop){
+        avail[l] <- pnorm.vals[l+1]-pnorm.vals[l]
       }
-      pnorm.x <- rep(0,n.cells.x+1)
-      pnorm.y <- rep(0,n.cells.y+1)
-      #get pnorms
-      for(l in x.start:(x.stop+1)){
-        pnorm.x[l] <- pnorm(x.vals.edges[l],mean=s[1],sd=sigma)
-      }
-      for(l in y.start:(y.stop+1)){
-        pnorm.y[l] <- pnorm(y.vals.edges[l],mean=s[2],sd=sigma)
-      }
-      for(l in (x.start):(x.stop)){
-        avail.dist.x[l] <- pnorm.x[l+1] - pnorm.x[l]
-      }
-      for(l in (y.start):(y.stop)){
-        avail.dist.y[l] <- pnorm.y[l+1] - pnorm.y[l]
-      }
-      avail.dist.tmp <- matrix(0,n.cells.x,n.cells.y)
-      sum.dist <- 0
-      for(i in x.start:x.stop){
-        for(j in y.start:y.stop){
-          avail.dist.tmp[i,j] <- avail.dist.x[i]*avail.dist.y[j]
-          sum.dist <- sum.dist + avail.dist.tmp[i,j]
-        }
-      }
-      avail.dist <- c(avail.dist.tmp)
-      #if any probability mass is outside state space, normalize
-      if(sum.dist<1){
-        avail.dist <- avail.dist/sum.dist
-      }
-    }else{
-      n.cells <- n.cells.x*n.cells.y
-      avail.dist <- rep(0,n.cells)
     }
-    return(avail.dist)
+    return(avail)
   }
 )
 
-getUse <- nimbleFunction(
-  run = function(rsf = double(1),avail.dist=double(1),z.super = double(0)){
-    returnType(double(1))
+
+getUseDenom <- nimbleFunction(
+  run = function(rsf=double(1),avail.x=double(1),avail.y=double(1),
+                 n.cells.x=integer(0),n.cells.y=integer(0),z.super=double(0)){
+    returnType(double(0))
+    use.denom <- 0
     if(z.super==1){
-      use.dist <- rsf*avail.dist
-      use.dist <- use.dist/sum(use.dist)
-    }else{
-      n.cells <- nimDim(rsf)[1]
-      use.dist <- rep(0,n.cells)
+      for(j in 1:n.cells.y){
+        for(i in 1:n.cells.x){
+          cell <- i+(j-1)*n.cells.x
+          use.denom <- use.denom+rsf[cell]*avail.x[i]*avail.y[j]
+        }
+      }
+    }
+    return(use.denom)
+  }
+)
+
+getUseFactored <- nimbleFunction(
+  run = function(rsf=double(1),avail.x=double(1),avail.y=double(1),
+                 n.cells.x=integer(0),n.cells.y=integer(0),z.super=double(0)){
+    returnType(double(1))
+    n.cells <- n.cells.x*n.cells.y
+    use.dist <- rep(0,n.cells)
+    if(z.super==1){
+      use.denom <- 0
+      for(j in 1:n.cells.y){
+        for(i in 1:n.cells.x){
+          cell <- i+(j-1)*n.cells.x
+          use.dist[cell] <- rsf[cell]*avail.x[i]*avail.y[j]
+          use.denom <- use.denom+use.dist[cell]
+        }
+      }
+      use.dist <- use.dist/use.denom
     }
     return(use.dist)
   }
@@ -434,8 +417,9 @@ zSampler <- nimbleFunction(
     y2D <- control$y2D
     xlim <- control$xlim
     ylim <- control$ylim
-    x.vals <- control$x.vals
-    y.vals <- control$y.vals
+    x.vals.edges <- control$x.vals.edges
+    y.vals.edges <- control$y.vals.edges
+    avail.z <- control$avail.z
     cells <- control$cells
     dSS <- control$dSS
     n.cells <- control$n.cells
@@ -1442,7 +1426,9 @@ zSampler <- nimbleFunction(
             model$s[pick,g,1:2] <<- c(0,0)
           }
           for(g in 1:(n.primary-1)){
-            model$avail.dist[pick,g,1:n.cells] <<- rep(0,n.cells)
+            model$avail.x[pick,g,1:n.cells.x] <<- rep(0,n.cells.x)
+            model$avail.y[pick,g,1:n.cells.y] <<- rep(0,n.cells.y)
+            model$use.denom[pick,g] <<- 0
           }
           
           #only need to consider when z.curr=1 since those are the only values that can change with this proposal
@@ -1466,6 +1452,7 @@ zSampler <- nimbleFunction(
           lp.proposed.N <- model$calculate(N.nodes[1])
           lp.proposed.N.recruit <- model$calculate(N.recruit.nodes)
           #only need to consider when z.curr=1 since those are the only values that can change with this proposal
+          lp.proposed.y.mark <- 0 #all marking likelihood terms are zero when z.super=0
           lp.proposed.y.um <- 0
           lp.proposed.y.unk <- 0
           lp.proposed.trap.RE <- 0
@@ -1515,7 +1502,9 @@ zSampler <- nimbleFunction(
             mvSaved["ER",1] <<- model[["ER"]]
             mvSaved["s",1][pick,1:n.primary,1:2] <<- model[["s"]][pick,1:n.primary,1:2]
             for(g2 in 1:(n.primary-1)){
-              mvSaved["avail.dist",1][pick,g2,1:n.cells] <<- model[["avail.dist"]][pick,g2,1:n.cells]
+              mvSaved["avail.x",1][pick,g2,1:n.cells.x] <<- model[["avail.x"]][pick,g2,1:n.cells.x]
+              mvSaved["avail.y",1][pick,g2,1:n.cells.y] <<- model[["avail.y"]][pick,g2,1:n.cells.y]
+              mvSaved["use.denom",1][pick,g2] <<- model[["use.denom"]][pick,g2]
             }
             #only need to consider when z.curr=1 since those are the only values that can change with this proposal
             #synchronize focal marking nodes only where they changed from on to off
@@ -1561,7 +1550,9 @@ zSampler <- nimbleFunction(
             model[["ER"]] <<- mvSaved["ER",1]
             model[["s"]][pick,1:n.primary,1:2] <<- mvSaved["s",1][pick,1:n.primary,1:2]
             for(g2 in 1:(n.primary-1)){
-              model[["avail.dist"]][pick,g2,1:n.cells] <<- mvSaved["avail.dist",1][pick,g2,1:n.cells]
+              model[["avail.x"]][pick,g2,1:n.cells.x] <<- mvSaved["avail.x",1][pick,g2,1:n.cells.x]
+              model[["avail.y"]][pick,g2,1:n.cells.y] <<- mvSaved["avail.y",1][pick,g2,1:n.cells.y]
+              model[["use.denom"]][pick,g2] <<- mvSaved["use.denom",1][pick,g2]
             }
             #only need to consider when z.curr=1 since those are the only values that can change with this proposal
             #Focal pd/lam nodes were not recalculated before this rejected remove proposal, so they remain valid.
@@ -1671,16 +1662,22 @@ zSampler <- nimbleFunction(
                                         xlim=xlim,ylim=ylim,z.super=1)
           #propose subsequent primary occasions from the RSF movement prior
           for(g in 2:n.primary){
-            model$avail.dist[pick,g-1,1:n.cells] <<- getAvail(s=model$s[pick,g-1,1:2],
-                                                              sigma=model$sigma.move.int[g-1],res=res,
-                                                              x.vals=x.vals,y.vals=y.vals,
-                                                              n.cells.x=n.cells.x,n.cells.y=n.cells.y,
-                                                              z.super=1)
-            model$s[pick,g,1:2] <<- rHabMove(1,s.prev=model$s[pick,g-1,1:2],
-                                             rsf=model$rsf[1:n.cells],
-                                             avail.dist=model$avail.dist[pick,g-1,1:n.cells],
-                                             dSS=dSS[1:n.cells,1:2],
-                                             cells=cells[1:n.cells.x,1:n.cells.y],
+            model$avail.x[pick,g-1,1:n.cells.x] <<- getAvail1D(s=model$s[pick,g-1,1],
+                                                               sigma=model$sigma.move.int[g-1],res=res,
+                                                               vals.edges=x.vals.edges,n.cells=n.cells.x,
+                                                               avail.z=avail.z,z.super=1)
+            model$avail.y[pick,g-1,1:n.cells.y] <<- getAvail1D(s=model$s[pick,g-1,2],
+                                                               sigma=model$sigma.move.int[g-1],res=res,
+                                                               vals.edges=y.vals.edges,n.cells=n.cells.y,
+                                                               avail.z=avail.z,z.super=1)
+            model$use.denom[pick,g-1] <<- getUseDenom(rsf=model$rsf[1:n.cells],
+                                                      avail.x=model$avail.x[pick,g-1,1:n.cells.x],
+                                                      avail.y=model$avail.y[pick,g-1,1:n.cells.y],
+                                                      n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
+            model$s[pick,g,1:2] <<- rHabMove(1,s.prev=model$s[pick,g-1,1:2],rsf=model$rsf[1:n.cells],
+                                             avail.x=model$avail.x[pick,g-1,1:n.cells.x],
+                                             avail.y=model$avail.y[pick,g-1,1:n.cells.y],
+                                             use.denom=model$use.denom[pick,g-1],dSS=dSS[1:n.cells,1:2],
                                              res=res,sigma.move=model$sigma.move.int[g-1],z.super=1)
           }
           
@@ -1775,7 +1772,9 @@ zSampler <- nimbleFunction(
             mvSaved["ER",1] <<- model[["ER"]]
             mvSaved["s",1][pick,1:n.primary,1:2] <<- model[["s"]][pick,1:n.primary,1:2]
             for(g2 in 1:(n.primary-1)){
-              mvSaved["avail.dist",1][pick,g2,1:n.cells] <<- model[["avail.dist"]][pick,g2,1:n.cells]
+              mvSaved["avail.x",1][pick,g2,1:n.cells.x] <<- model[["avail.x"]][pick,g2,1:n.cells.x]
+              mvSaved["avail.y",1][pick,g2,1:n.cells.y] <<- model[["avail.y"]][pick,g2,1:n.cells.y]
+              mvSaved["use.denom",1][pick,g2] <<- model[["use.denom"]][pick,g2]
             }
             #only need to consider when z.prop=1 since those are the only values that can change with this proposal
             for(g2 in 1:n.mark.g){
@@ -1817,7 +1816,9 @@ zSampler <- nimbleFunction(
             model[["ER"]] <<- mvSaved["ER",1]
             model[["s"]][pick,1:n.primary,1:2] <<- mvSaved["s",1][pick,1:n.primary,1:2]
             for(g2 in 1:(n.primary-1)){
-              model[["avail.dist"]][pick,g2,1:n.cells] <<- mvSaved["avail.dist",1][pick,g2,1:n.cells]
+              model[["avail.x"]][pick,g2,1:n.cells.x] <<- mvSaved["avail.x",1][pick,g2,1:n.cells.x]
+              model[["avail.y"]][pick,g2,1:n.cells.y] <<- mvSaved["avail.y",1][pick,g2,1:n.cells.y]
+              model[["use.denom"]][pick,g2] <<- mvSaved["use.denom",1][pick,g2]
             }
             #only need to consider when z.prop=1 since those are the only values that can change with this proposal
             for(g2 in 1:n.mark.g){

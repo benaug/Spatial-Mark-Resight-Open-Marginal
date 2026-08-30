@@ -19,7 +19,7 @@ sim.JS.SMR.Dcov.mobileAC.Generalized.Interspersed <- function(D.beta0=NA,D.beta1
                                                               X.mark=NA,X.sight=NA,buff=buff,xlim=NA,
                                                               ylim=NA,res=NA,
                                                               mark.g.pars=NA,mark.protocol=NA,
-                                                              n.tel.locs=NA,p.mark=NA){
+                                                              n.tel.locs=NA,p.mark=NA,avail.z=qnorm(1-1e-8)){
   
   #check K.order
   #For any primary occasion with effort, K.order gives the complete ordering of M and S occasions.
@@ -121,6 +121,8 @@ sim.JS.SMR.Dcov.mobileAC.Generalized.Interspersed <- function(D.beta0=NA,D.beta1
   n.cells <- nrow(dSS)
   n.cells.x <- length(x.vals)
   n.cells.y <- length(y.vals)
+  x.vals.edges <- c(x.vals-res/2,x.vals[n.cells.x]+0.5*res)
+  y.vals.edges <- c(y.vals-res/2,y.vals[n.cells.y]+0.5*res)
   
   #Easiest to increase dimension of z as we simulate bc size not known in advance.
   z <- matrix(0,N[1],n.primary)
@@ -171,16 +173,22 @@ sim.JS.SMR.Dcov.mobileAC.Generalized.Interspersed <- function(D.beta0=NA,D.beta1
     s[i,1,2] <- runif(1,s.ylim[1],s.ylim[2])
   }
   #subsequent primary occasions
+  avail.x <- array(NA,dim=c(N.super,n.primary-1,n.cells.x))
+  avail.y <- array(NA,dim=c(N.super,n.primary-1,n.cells.y))
   avail.dist <- use.dist <- array(NA,dim=c(N.super,n.primary-1,n.cells))
   rsf <- exp(rsf.beta*D.cov)
   rsf[InSS==0] <- 0 #disallow individuals moving into nonhabitat
   for(g in 2:n.primary){
     sigma.move.int <- sigma.move*sqrt(tau.move[g-1])
     for(i in 1:N.super){
-      avail.dist[i,g-1,] <- getAvail(s=s[i,g-1,1:2],sigma=sigma.move.int,res=res,x.vals=x.vals,
-                                     y.vals=y.vals,n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
-      use.dist[i,g-1,] <- rsf*avail.dist[i,g-1,]
-      use.dist[i,g-1,] <- use.dist[i,g-1,]/sum(use.dist[i,g-1,])
+      avail.x[i,g-1,] <- getAvail1D(s=s[i,g-1,1],sigma=sigma.move.int,res=res,
+                                    vals.edges=x.vals.edges,n.cells=n.cells.x,avail.z=avail.z,z.super=1)
+      avail.y[i,g-1,] <- getAvail1D(s=s[i,g-1,2],sigma=sigma.move.int,res=res,
+                                    vals.edges=y.vals.edges,n.cells=n.cells.y,avail.z=avail.z,z.super=1)
+      avail.dist[i,g-1,] <- c(outer(avail.x[i,g-1,],avail.y[i,g-1,]))
+      avail.dist[i,g-1,] <- avail.dist[i,g-1,]/sum(avail.dist[i,g-1,])
+      use.dist[i,g-1,] <- getUseFactored(rsf=rsf,avail.x=avail.x[i,g-1,],avail.y=avail.y[i,g-1,],
+                                         n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
       #move AC - select new cell
       s.cell[i,g] <- sample(1:n.cells,1,replace=TRUE,prob=use.dist[i,g-1,])
       #choose location inside cell
@@ -244,7 +252,8 @@ sim.JS.SMR.Dcov.mobileAC.Generalized.Interspersed <- function(D.beta0=NA,D.beta1
   
   #store true data for debugging
   truth <- list(y.mark=y.mark,y=y,N=N,N.recruit=N.recruit,N.survive=N.survive,z=z,N.super=N.super,
-                s=s,s.cell=s.cell,pi.cell=pi.cell,avail.dist=avail.dist,use.dist=use.dist)
+                s=s,s.cell=s.cell,pi.cell=pi.cell,avail.x=avail.x,avail.y=avail.y,
+                avail.dist=avail.dist,use.dist=use.dist)
   
   #mark/telemetry data
   #deploy collars to individuals captured in marking process
@@ -439,6 +448,8 @@ sim.JS.SMR.Dcov.mobileAC.Generalized.Interspersed <- function(D.beta0=NA,D.beta1
   ID.order <- c(ID.marked.all,ID.cap.unmarked.all,ID.unobserved.all)
   s <- s[ID.order,,,drop=FALSE]
   s.cell <- s.cell[ID.order,,drop=FALSE]
+  avail.x <- avail.x[ID.order,,,drop=FALSE]
+  avail.y <- avail.y[ID.order,,,drop=FALSE]
   avail.dist <- avail.dist[ID.order,,,drop=FALSE]
   use.dist <- use.dist[ID.order,,,drop=FALSE]
   z <- z[ID.order,,drop=FALSE]
@@ -448,6 +459,8 @@ sim.JS.SMR.Dcov.mobileAC.Generalized.Interspersed <- function(D.beta0=NA,D.beta1
   mark.deploy <- mark.deploy[ID.order,,drop=FALSE]
   truth$s <- s
   truth$s.cell <- s.cell
+  truth$avail.x <- avail.x
+  truth$avail.y <- avail.y
   truth$avail.dist <- avail.dist
   truth$use.dist <- use.dist
   truth$z <- z

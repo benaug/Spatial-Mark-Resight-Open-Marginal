@@ -4,7 +4,7 @@ e2dist <- function (x, y){
   matrix(dvec, nrow = nrow(x), ncol = nrow(y), byrow = F)
 }
 
-init.SMR.Dcov.mobileAC.Open.Generalized <- function(data,inits=NA,M=NA){
+init.SMR.Dcov.mobileAC.Open.Generalized <- function(data,inits=NA,M=NA,x.vals.edges=NA,y.vals.edges=NA,avail.z=NA){
   if(M < (data$n.cap.all)+1) stop("M must be larger than the number of captured individuals plus at least one unmarked individual.")
   library(abind)
   n.marked <- data$n.marked
@@ -151,10 +151,12 @@ init.SMR.Dcov.mobileAC.Open.Generalized <- function(data,inits=NA,M=NA){
       #simulate backwards from first detection
       if(first.det>1){
         for(g in (first.det-1):1){
-          avail <- getAvail(s=s.pre[i,g+1,],sigma=sigma.move.int[g],res=data$res,
-                            x.vals=data$x.vals,y.vals=data$y.vals,
-                            n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
-          use <- getUse(rsf=rsf,avail.dist=avail,z.super=1)
+          avail.x.tmp <- getAvail1D(s=s.pre[i,g+1,1],sigma=sigma.move.int[g],res=data$res,
+                                    vals.edges=x.vals.edges,n.cells=n.cells.x,avail.z=avail.z,z.super=1)
+          avail.y.tmp <- getAvail1D(s=s.pre[i,g+1,2],sigma=sigma.move.int[g],res=data$res,
+                                    vals.edges=y.vals.edges,n.cells=n.cells.y,avail.z=avail.z,z.super=1)
+          use <- getUseFactored(rsf=rsf,avail.x=avail.x.tmp,avail.y=avail.y.tmp,
+                                n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
           s.cell <- sample(n.cells,1,prob=use)
           s.pre[i,g,1] <- runif(1,data$dSS[s.cell,1] - data$res/2,data$dSS[s.cell,1] + data$res/2)
           s.pre[i,g,2] <- runif(1,data$dSS[s.cell,2] - data$res/2,data$dSS[s.cell,2] + data$res/2)
@@ -163,10 +165,12 @@ init.SMR.Dcov.mobileAC.Open.Generalized <- function(data,inits=NA,M=NA){
       #simulate forwards from last detection
       if(last.det<n.primary){
         for(g in (last.det+1):n.primary){
-          avail <- getAvail(s=s.pre[i,g-1,],sigma=sigma.move.int[g-1],res=data$res,
-                            x.vals=data$x.vals,y.vals=data$y.vals,
-                            n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
-          use <- getUse(rsf=rsf,avail.dist=avail,z.super=1)
+          avail.x.tmp <- getAvail1D(s=s.pre[i,g-1,1],sigma=sigma.move.int[g-1],res=data$res,
+                                    vals.edges=x.vals.edges,n.cells=n.cells.x,avail.z=avail.z,z.super=1)
+          avail.y.tmp <- getAvail1D(s=s.pre[i,g-1,2],sigma=sigma.move.int[g-1],res=data$res,
+                                    vals.edges=y.vals.edges,n.cells=n.cells.y,avail.z=avail.z,z.super=1)
+          use <- getUseFactored(rsf=rsf,avail.x=avail.x.tmp,avail.y=avail.y.tmp,
+                                n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
           s.cell <- sample(n.cells,1,prob=use)
           s.pre[i,g,1] <- runif(1,data$dSS[s.cell,1] - data$res/2,data$dSS[s.cell,1] + data$res/2)
           s.pre[i,g,2] <- runif(1,data$dSS[s.cell,2] - data$res/2,data$dSS[s.cell,2] + data$res/2)
@@ -176,10 +180,12 @@ init.SMR.Dcov.mobileAC.Open.Generalized <- function(data,inits=NA,M=NA){
       if(last.det>first.det){
         for(g in first.det:(last.det-1)){
           if(!(g+1)%in%dets){
-            avail <- getAvail(s=s.pre[i,g,],sigma=sigma.move.int[g],res=data$res,
-                              x.vals=data$x.vals,y.vals=data$y.vals,
-                              n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
-            use <- getUse(rsf=rsf,avail.dist=avail,z.super=1)
+            avail.x.tmp <- getAvail1D(s=s.pre[i,g,1],sigma=sigma.move.int[g],res=data$res,
+                                      vals.edges=x.vals.edges,n.cells=n.cells.x,avail.z=avail.z,z.super=1)
+            avail.y.tmp <- getAvail1D(s=s.pre[i,g,2],sigma=sigma.move.int[g],res=data$res,
+                                      vals.edges=y.vals.edges,n.cells=n.cells.y,avail.z=avail.z,z.super=1)
+            use <- getUseFactored(rsf=rsf,avail.x=avail.x.tmp,avail.y=avail.y.tmp,
+                                  n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
             s.cell <- sample(n.cells,1,prob=use)
             s.pre[i,g+1,1] <- runif(1,data$dSS[s.cell,1] - data$res/2,data$dSS[s.cell,1] + data$res/2)
             s.pre[i,g+1,2] <- runif(1,data$dSS[s.cell,2] - data$res/2,data$dSS[s.cell,2] + data$res/2)
@@ -192,10 +198,12 @@ init.SMR.Dcov.mobileAC.Open.Generalized <- function(data,inits=NA,M=NA){
       s.pre[i,1,1] <- runif(1,data$dSS[s.cell,1] - data$res/2,data$dSS[s.cell,1] + data$res/2)
       s.pre[i,1,2] <- runif(1,data$dSS[s.cell,2] - data$res/2,data$dSS[s.cell,2] + data$res/2)
       for(g in 2:n.primary){
-        avail <- getAvail(s=s.pre[i,g-1,],sigma=sigma.move.int[g-1],res=data$res,
-                          x.vals=data$x.vals,y.vals=data$y.vals,
-                          n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
-        use <- getUse(rsf=rsf,avail.dist=avail,z.super=1)
+        avail.x.tmp <- getAvail1D(s=s.pre[i,g-1,1],sigma=sigma.move.int[g-1],res=data$res,
+                                  vals.edges=x.vals.edges,n.cells=n.cells.x,avail.z=avail.z,z.super=1)
+        avail.y.tmp <- getAvail1D(s=s.pre[i,g-1,2],sigma=sigma.move.int[g-1],res=data$res,
+                                  vals.edges=y.vals.edges,n.cells=n.cells.y,avail.z=avail.z,z.super=1)
+        use <- getUseFactored(rsf=rsf,avail.x=avail.x.tmp,avail.y=avail.y.tmp,
+                              n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
         s.cell <- sample(n.cells,1,prob=use)
         s.pre[i,g,1] <- runif(1,data$dSS[s.cell,1] - data$res/2,data$dSS[s.cell,1] + data$res/2)
         s.pre[i,g,2] <- runif(1,data$dSS[s.cell,2] - data$res/2,data$dSS[s.cell,2] + data$res/2)
@@ -245,7 +253,9 @@ init.SMR.Dcov.mobileAC.Open.Generalized <- function(data,inits=NA,M=NA){
   z.super.init <- 1*(z.start.init>0)
   #final mobile activity centers using allocated latent detections
   s.init <- array(0,dim=c(M,n.primary,2))
-  avail.dist.init <- array(0,dim=c(M,n.primary-1,n.cells))
+  avail.x.init <- array(0,dim=c(M,n.primary-1,n.cells.x))
+  avail.y.init <- array(0,dim=c(M,n.primary-1,n.cells.y))
+  use.denom.init <- matrix(0,M,n.primary-1)
   on.inds <- which(z.super.init==1)
   for(i in on.inds){
     obs2D <- rep(0,n.primary)
@@ -311,10 +321,12 @@ init.SMR.Dcov.mobileAC.Open.Generalized <- function(data,inits=NA,M=NA){
       #simulate backwards from first detection
       if(first.det>1){
         for(g in (first.det-1):1){
-          avail <- getAvail(s=s.init[i,g+1,],sigma=sigma.move.int[g],res=data$res,
-                            x.vals=data$x.vals,y.vals=data$y.vals,
-                            n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
-          use <- getUse(rsf=rsf,avail.dist=avail,z.super=1)
+          avail.x.tmp <- getAvail1D(s=s.init[i,g+1,1],sigma=sigma.move.int[g],res=data$res,
+                                    vals.edges=x.vals.edges,n.cells=n.cells.x,avail.z=avail.z,z.super=1)
+          avail.y.tmp <- getAvail1D(s=s.init[i,g+1,2],sigma=sigma.move.int[g],res=data$res,
+                                    vals.edges=y.vals.edges,n.cells=n.cells.y,avail.z=avail.z,z.super=1)
+          use <- getUseFactored(rsf=rsf,avail.x=avail.x.tmp,avail.y=avail.y.tmp,
+                                n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
           s.cell <- sample(n.cells,1,prob=use)
           s.init[i,g,1] <- runif(1,data$dSS[s.cell,1] - data$res/2,data$dSS[s.cell,1] + data$res/2)
           s.init[i,g,2] <- runif(1,data$dSS[s.cell,2] - data$res/2,data$dSS[s.cell,2] + data$res/2)
@@ -323,10 +335,12 @@ init.SMR.Dcov.mobileAC.Open.Generalized <- function(data,inits=NA,M=NA){
       #simulate forwards from last detection
       if(last.det<n.primary){
         for(g in (last.det+1):n.primary){
-          avail <- getAvail(s=s.init[i,g-1,],sigma=sigma.move.int[g-1],res=data$res,
-                            x.vals=data$x.vals,y.vals=data$y.vals,
-                            n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
-          use <- getUse(rsf=rsf,avail.dist=avail,z.super=1)
+          avail.x.tmp <- getAvail1D(s=s.init[i,g-1,1],sigma=sigma.move.int[g-1],res=data$res,
+                                    vals.edges=x.vals.edges,n.cells=n.cells.x,avail.z=avail.z,z.super=1)
+          avail.y.tmp <- getAvail1D(s=s.init[i,g-1,2],sigma=sigma.move.int[g-1],res=data$res,
+                                    vals.edges=y.vals.edges,n.cells=n.cells.y,avail.z=avail.z,z.super=1)
+          use <- getUseFactored(rsf=rsf,avail.x=avail.x.tmp,avail.y=avail.y.tmp,
+                                n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
           s.cell <- sample(n.cells,1,prob=use)
           s.init[i,g,1] <- runif(1,data$dSS[s.cell,1] - data$res/2,data$dSS[s.cell,1] + data$res/2)
           s.init[i,g,2] <- runif(1,data$dSS[s.cell,2] - data$res/2,data$dSS[s.cell,2] + data$res/2)
@@ -336,10 +350,12 @@ init.SMR.Dcov.mobileAC.Open.Generalized <- function(data,inits=NA,M=NA){
       if(last.det>first.det){
         for(g in first.det:(last.det-1)){
           if(!(g+1)%in%dets){
-            avail <- getAvail(s=s.init[i,g,],sigma=sigma.move.int[g],res=data$res,
-                              x.vals=data$x.vals,y.vals=data$y.vals,
-                              n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
-            use <- getUse(rsf=rsf,avail.dist=avail,z.super=1)
+            avail.x.tmp <- getAvail1D(s=s.init[i,g,1],sigma=sigma.move.int[g],res=data$res,
+                                      vals.edges=x.vals.edges,n.cells=n.cells.x,avail.z=avail.z,z.super=1)
+            avail.y.tmp <- getAvail1D(s=s.init[i,g,2],sigma=sigma.move.int[g],res=data$res,
+                                      vals.edges=y.vals.edges,n.cells=n.cells.y,avail.z=avail.z,z.super=1)
+            use <- getUseFactored(rsf=rsf,avail.x=avail.x.tmp,avail.y=avail.y.tmp,
+                                  n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
             s.cell <- sample(n.cells,1,prob=use)
             s.init[i,g+1,1] <- runif(1,data$dSS[s.cell,1] - data$res/2,data$dSS[s.cell,1] + data$res/2)
             s.init[i,g+1,2] <- runif(1,data$dSS[s.cell,2] - data$res/2,data$dSS[s.cell,2] + data$res/2)
@@ -352,19 +368,24 @@ init.SMR.Dcov.mobileAC.Open.Generalized <- function(data,inits=NA,M=NA){
       s.init[i,1,1] <- runif(1,data$dSS[s.cell,1] - data$res/2,data$dSS[s.cell,1] + data$res/2)
       s.init[i,1,2] <- runif(1,data$dSS[s.cell,2] - data$res/2,data$dSS[s.cell,2] + data$res/2)
       for(g in 2:n.primary){
-        avail <- getAvail(s=s.init[i,g-1,],sigma=sigma.move.int[g-1],res=data$res,
-                          x.vals=data$x.vals,y.vals=data$y.vals,
-                          n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
-        use <- getUse(rsf=rsf,avail.dist=avail,z.super=1)
+        avail.x.tmp <- getAvail1D(s=s.init[i,g-1,1],sigma=sigma.move.int[g-1],res=data$res,
+                                  vals.edges=x.vals.edges,n.cells=n.cells.x,avail.z=avail.z,z.super=1)
+        avail.y.tmp <- getAvail1D(s=s.init[i,g-1,2],sigma=sigma.move.int[g-1],res=data$res,
+                                  vals.edges=y.vals.edges,n.cells=n.cells.y,avail.z=avail.z,z.super=1)
+        use <- getUseFactored(rsf=rsf,avail.x=avail.x.tmp,avail.y=avail.y.tmp,
+                              n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
         s.cell <- sample(n.cells,1,prob=use)
         s.init[i,g,1] <- runif(1,data$dSS[s.cell,1] - data$res/2,data$dSS[s.cell,1] + data$res/2)
         s.init[i,g,2] <- runif(1,data$dSS[s.cell,2] - data$res/2,data$dSS[s.cell,2] + data$res/2)
       }
     }
     for(g in 2:n.primary){
-      avail.dist.init[i,g-1,] <- getAvail(s=s.init[i,g-1,1:2],sigma=sigma.move.int[g-1],res=data$res,
-                                          x.vals=data$x.vals,y.vals=data$y.vals,
-                                          n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
+      avail.x.init[i,g-1,] <- getAvail1D(s=s.init[i,g-1,1],sigma=sigma.move.int[g-1],res=data$res,
+                                         vals.edges=x.vals.edges,n.cells=n.cells.x,avail.z=avail.z,z.super=1)
+      avail.y.init[i,g-1,] <- getAvail1D(s=s.init[i,g-1,2],sigma=sigma.move.int[g-1],res=data$res,
+                                         vals.edges=y.vals.edges,n.cells=n.cells.y,avail.z=avail.z,z.super=1)
+      use.denom.init[i,g-1] <- getUseDenom(rsf=rsf,avail.x=avail.x.init[i,g-1,],avail.y=avail.y.init[i,g-1,],
+                                           n.cells.x=n.cells.x,n.cells.y=n.cells.y,z.super=1)
     }
   }
   #check starting logProb
@@ -372,9 +393,9 @@ init.SMR.Dcov.mobileAC.Open.Generalized <- function(data,inits=NA,M=NA){
   for(i in 1:M){
     if(z.super.init[i]==1){
       for(g in 2:n.primary){
-        logProb[i,g-1] <- dHabMove(x=s.init[i,g,1:2],s.prev=s.init[i,g-1,1:2],
-                                   rsf=rsf[1:n.cells],avail.dist=avail.dist.init[i,g-1,1:n.cells],
-                                   dSS=data$dSS[1:n.cells,1:2],cells=data$cells[1:n.cells.x,1:n.cells.y],
+        logProb[i,g-1] <- dHabMove(x=s.init[i,g,1:2],s.prev=s.init[i,g-1,1:2],rsf=rsf[1:n.cells],
+                                   avail.x=avail.x.init[i,g-1,],avail.y=avail.y.init[i,g-1,],
+                                   use.denom=use.denom.init[i,g-1],dSS=data$dSS[1:n.cells,1:2],
                                    res=data$res,sigma.move=sigma.move.int[g-1],z.super=1,log=TRUE)
       }
     }
@@ -482,7 +503,7 @@ init.SMR.Dcov.mobileAC.Open.Generalized <- function(data,inits=NA,M=NA){
       if(!is.finite(sum(logProb)))stop(paste("Starting observation model likelihood not finite. Unknown marked status observations, primary occasion",g))
     }
   }
-  return(list(s=s.init,avail.dist=avail.dist.init,
+  return(list(s=s.init,avail.x=avail.x.init,avail.y=avail.y.init,use.denom=use.denom.init,
               z=z.init,N=N.init,N.survive=N.survive.init,N.recruit=N.recruit.init,
               N.super=N.super.init,z.start=z.start.init,z.stop=z.stop.init,z.super=z.super.init,
               K1D.mark=K1D.mark,K1D.sight=K1D.sight,n.marked=n.marked,n.marked.all=n.marked.all,ID.marked=ID.marked,
