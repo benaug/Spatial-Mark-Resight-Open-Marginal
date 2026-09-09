@@ -11,8 +11,6 @@ sSampler1 <- nimbleFunction(
     J.sight <- control$J.sight
     n.marked.all <- control$n.marked.all
     mark.states <- control$mark.states
-    mark.states.all <- control$mark.states.all
-    M <- dim(mark.states.all)[1]
     s.nodes <- control$s.nodes
     pd.nodes <- control$pd.nodes
     lam.nodes <- control$lam.nodes
@@ -58,7 +56,7 @@ sSampler1 <- nimbleFunction(
     if(adaptFactorExponent < 0)      stop('cannot use RW sampler with adaptFactorExponent control parameter less than 0')
     if(scale < 0)                    stop('cannot use RW sampler with scale control parameter less than 0')
   },
-  run <- function(){
+  run = function(){
     z.super <- model$z.super[i]
     z <- model$z[i,g]
     if(z.super==1&z==1){
@@ -79,37 +77,14 @@ sSampler1 <- nimbleFunction(
           bigLam.marked.proposed <- bigLam.marked.initial
           bigLam.unmarked.proposed <- bigLam.unmarked.initial
           if(J.sight[g]>0){
+            bigLam.marked.proposed[g,1:J.sight[g]] <- bigLam.marked.proposed[g,1:J.sight[g]] - model$lam[i,g,1:J.sight[g]]*mark.states[g]
+            bigLam.unmarked.proposed[g,1:J.sight[g]] <- bigLam.unmarked.proposed[g,1:J.sight[g]] - model$lam[i,g,1:J.sight[g]]*(1-mark.states[g])
             for(j in 1:J.sight[g]){
-              if(mark.states[g]==1){
-                bigLam.old <- bigLam.marked.proposed[g,j]
-                bigLam.marked.proposed[g,j] <- bigLam.old-model$lam[i,g,j]
-                #if subtraction nearly cancels the total, recompute the residual to avoid numerical loss
-                if(bigLam.old>0&bigLam.marked.proposed[g,j]<=1e-12*bigLam.old){
-                  bigLam.marked.proposed[g,j] <- 0
-                  for(k in 1:n.marked.all){
-                    if(k!=i&mark.states.all[k,g]==1){
-                      bigLam.marked.proposed[g,j] <- bigLam.marked.proposed[g,j]+model$lam[k,g,j]
-                    }
-                  }
-                }
-                if(bigLam.marked.proposed[g,j]<0){
-                  bigLam.marked.proposed[g,j] <- 0
-                }
-              }else{
-                bigLam.old <- bigLam.unmarked.proposed[g,j]
-                bigLam.unmarked.proposed[g,j] <- bigLam.old-model$lam[i,g,j]
-                #if subtraction nearly cancels the total, recompute the residual to avoid numerical loss
-                if(bigLam.old>0&bigLam.unmarked.proposed[g,j]<=1e-12*bigLam.old){
-                  bigLam.unmarked.proposed[g,j] <- 0
-                  for(k in 1:M){
-                    if(k!=i&mark.states.all[k,g]==0){
-                      bigLam.unmarked.proposed[g,j] <- bigLam.unmarked.proposed[g,j]+model$lam[k,g,j]
-                    }
-                  }
-                }
-                if(bigLam.unmarked.proposed[g,j]<0){
-                  bigLam.unmarked.proposed[g,j] <- 0
-                }
+              if(bigLam.marked.proposed[g,j]<0){
+                bigLam.marked.proposed[g,j] <- 0
+              }
+              if(bigLam.unmarked.proposed[g,j]<0){
+                bigLam.unmarked.proposed[g,j] <- 0
               }
             }
           }
@@ -139,18 +114,8 @@ sSampler1 <- nimbleFunction(
           lp.proposed.s <- model$calculate(s.nodes)
           bigLam.unmarked.proposed <- bigLam.unmarked.initial
           if(J.sight[g]>0){
+            bigLam.unmarked.proposed[g,1:J.sight[g]] <- bigLam.unmarked.proposed[g,1:J.sight[g]] - model$lam[i,g,1:J.sight[g]]
             for(j in 1:J.sight[g]){
-              bigLam.old <- bigLam.unmarked.proposed[g,j]
-              bigLam.unmarked.proposed[g,j] <- bigLam.old-model$lam[i,g,j]
-              #if subtraction nearly cancels the total, recompute the residual to avoid numerical loss
-              if(bigLam.old>0&bigLam.unmarked.proposed[g,j]<=1e-12*bigLam.old){
-                bigLam.unmarked.proposed[g,j] <- 0
-                for(k in 1:M){
-                  if(k!=i&mark.states.all[k,g]==0){
-                    bigLam.unmarked.proposed[g,j] <- bigLam.unmarked.proposed[g,j]+model$lam[k,g,j]
-                  }
-                }
-              }
               if(bigLam.unmarked.proposed[g,j]<0){
                 bigLam.unmarked.proposed[g,j] <- 0
               }
@@ -300,7 +265,7 @@ sSampler2 <- nimbleFunction(
     if(adaptFactorExponent < 0)      stop('cannot use RW sampler with adaptFactorExponent control parameter less than 0')
     if(scale < 0)                    stop('cannot use RW sampler with scale control parameter less than 0')
   },
-  run <- function() {
+  run = function() {
     z.super <- model$z.super[i]
     z <- model$z[i,g]
     if(z.super==1&z==0){
@@ -404,14 +369,12 @@ sSampler3 <- nimbleFunction(
     xlim <- control$xlim
     ylim <- control$ylim
     jump.multiplier <- control$jump.multiplier
+    sig.move.fixed <- control$sig.move.fixed
     calcNodes <- control$calcNodes
-    s.nodes <- control$s.nodes
     J.mark <- control$J.mark
     J.sight <- control$J.sight
     n.marked.all <- control$n.marked.all
     mark.states <- control$mark.states
-    mark.states.all <- control$mark.states.all
-    M <- dim(mark.states.all)[1]
     s.nodes <- control$s.nodes
     pd.nodes <- control$pd.nodes
     lam.nodes <- control$lam.nodes
@@ -426,25 +389,25 @@ sSampler3 <- nimbleFunction(
   },
   run = function(){
     if(model$z.super[i]==1){
-      if(g==1){
-        scale.jump <- jump.multiplier * model$sigma.move.int[1]
+      if(sig.move.fixed==TRUE){
+        scale.jump <- jump.multiplier*model$sigma.move[1]
       }else{
-        scale.jump <- jump.multiplier * model$sigma.move.int[g-1]
+        scale.jump <- jump.multiplier*model$sigma.move[i]
       }
       s.cand <- c(rnorm(1,model$s[i,g,1],scale.jump),
                   rnorm(1,model$s[i,g,2],scale.jump))
       inbox <- s.cand[1] < xlim[2] & s.cand[1] > xlim[1] & s.cand[2] < ylim[2] & s.cand[2] > ylim[1]
       if(inbox){
         if(model$z[i,g]==0){
-          model_lp_initial <- model$getLogProb(s.nodes)
+          model_lp_initial <- model$getLogProb(calcNodes)
           model$s[i,g,1:2] <<- s.cand
-          model_lp_proposed <- model$calculate(s.nodes)
+          model_lp_proposed <- model$calculate(calcNodes)
           log_MH_ratio <- model_lp_proposed - model_lp_initial
           accept <- decide(log_MH_ratio)
           if(accept){
-            copy(from=model,to=mvSaved,row=1,nodes=s.nodes,logProb=TRUE)
+            copy(from=model,to=mvSaved,row=1,nodes=calcNodes,logProb=TRUE)
           }else{
-            copy(from=mvSaved,to=model,row=1,nodes=s.nodes,logProb=TRUE)
+            copy(from=mvSaved,to=model,row=1,nodes=calcNodes,logProb=TRUE)
           }
         }else{
           lp.initial.s <- model$getLogProb(s.nodes)
@@ -461,37 +424,14 @@ sSampler3 <- nimbleFunction(
             bigLam.marked.proposed <- bigLam.marked.initial
             bigLam.unmarked.proposed <- bigLam.unmarked.initial
             if(J.sight[g]>0){
+              bigLam.marked.proposed[g,1:J.sight[g]] <- bigLam.marked.proposed[g,1:J.sight[g]] - model$lam[i,g,1:J.sight[g]]*mark.states[g]
+              bigLam.unmarked.proposed[g,1:J.sight[g]] <- bigLam.unmarked.proposed[g,1:J.sight[g]] - model$lam[i,g,1:J.sight[g]]*(1-mark.states[g])
               for(j in 1:J.sight[g]){
-                if(mark.states[g]==1){
-                  bigLam.old <- bigLam.marked.proposed[g,j]
-                  bigLam.marked.proposed[g,j] <- bigLam.old-model$lam[i,g,j]
-                  #if subtraction nearly cancels the total, recompute the residual to avoid numerical loss
-                  if(bigLam.old>0&bigLam.marked.proposed[g,j]<=1e-12*bigLam.old){
-                    bigLam.marked.proposed[g,j] <- 0
-                    for(k in 1:n.marked.all){
-                      if(k!=i&mark.states.all[k,g]==1){
-                        bigLam.marked.proposed[g,j] <- bigLam.marked.proposed[g,j]+model$lam[k,g,j]
-                      }
-                    }
-                  }
-                  if(bigLam.marked.proposed[g,j]<0){
-                    bigLam.marked.proposed[g,j] <- 0
-                  }
-                }else{
-                  bigLam.old <- bigLam.unmarked.proposed[g,j]
-                  bigLam.unmarked.proposed[g,j] <- bigLam.old-model$lam[i,g,j]
-                  #if subtraction nearly cancels the total, recompute the residual to avoid numerical loss
-                  if(bigLam.old>0&bigLam.unmarked.proposed[g,j]<=1e-12*bigLam.old){
-                    bigLam.unmarked.proposed[g,j] <- 0
-                    for(k in 1:M){
-                      if(k!=i&mark.states.all[k,g]==0){
-                        bigLam.unmarked.proposed[g,j] <- bigLam.unmarked.proposed[g,j]+model$lam[k,g,j]
-                      }
-                    }
-                  }
-                  if(bigLam.unmarked.proposed[g,j]<0){
-                    bigLam.unmarked.proposed[g,j] <- 0
-                  }
+                if(bigLam.marked.proposed[g,j]<0){
+                  bigLam.marked.proposed[g,j] <- 0
+                }
+                if(bigLam.unmarked.proposed[g,j]<0){
+                  bigLam.unmarked.proposed[g,j] <- 0
                 }
               }
             }
@@ -521,18 +461,8 @@ sSampler3 <- nimbleFunction(
             lp.proposed.s <- model$calculate(s.nodes)
             bigLam.unmarked.proposed <- bigLam.unmarked.initial
             if(J.sight[g]>0){
+              bigLam.unmarked.proposed[g,1:J.sight[g]] <- bigLam.unmarked.proposed[g,1:J.sight[g]] - model$lam[i,g,1:J.sight[g]]
               for(j in 1:J.sight[g]){
-                bigLam.old <- bigLam.unmarked.proposed[g,j]
-                bigLam.unmarked.proposed[g,j] <- bigLam.old-model$lam[i,g,j]
-                #if subtraction nearly cancels the total, recompute the residual to avoid numerical loss
-                if(bigLam.old>0&bigLam.unmarked.proposed[g,j]<=1e-12*bigLam.old){
-                  bigLam.unmarked.proposed[g,j] <- 0
-                  for(k in 1:M){
-                    if(k!=i&mark.states.all[k,g]==0){
-                      bigLam.unmarked.proposed[g,j] <- bigLam.unmarked.proposed[g,j]+model$lam[k,g,j]
-                    }
-                  }
-                }
                 if(bigLam.unmarked.proposed[g,j]<0){
                   bigLam.unmarked.proposed[g,j] <- 0
                 }
