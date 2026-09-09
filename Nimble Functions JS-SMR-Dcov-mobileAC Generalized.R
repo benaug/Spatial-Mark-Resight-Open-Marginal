@@ -39,11 +39,6 @@ rHab1 <- nimbleFunction(
 )
 
 dHabMove <- nimbleFunction(
-  #changed: replaced old dHabMove signature that retained unused cells argument
-  # run = function(x = double(1),s.prev = double(1),rsf = double(1),avail.x = double(1),avail.y = double(1),
-  #                use.denom = double(0),dSS = double(2),cells = double(2),res = double(0),
-  #                sigma.move = double(0),z.super = double(0),log = integer(0)){
-  #changed: new dHabMove signature removes unused cells argument to match SCR
   run = function(x = double(1),s.prev = double(1),rsf = double(1),avail.x = double(1),avail.y = double(1),
                  use.denom = double(0),dSS = double(2),res = double(0),
                  sigma.move = double(0),z.super = double(0),log = integer(0)){
@@ -72,11 +67,6 @@ dHabMove <- nimbleFunction(
 )
 
 rHabMove <- nimbleFunction(
-  #changed: replaced old rHabMove signature that retained unused cells argument
-  # run = function(n = integer(0),s.prev = double(1),rsf = double(1),avail.x = double(1),avail.y = double(1),
-  #                use.denom = double(0),dSS = double(2),cells = double(2),res = double(0),
-  #                sigma.move = double(0),z.super = double(0)) {
-  #changed: new rHabMove signature removes unused cells argument to match SCR
   run = function(n = integer(0),s.prev = double(1),rsf = double(1),avail.x = double(1),avail.y = double(1),
                  use.denom = double(0),dSS = double(2),res = double(0),
                  sigma.move = double(0),z.super = double(0)) {
