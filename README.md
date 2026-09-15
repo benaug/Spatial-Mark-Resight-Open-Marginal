@@ -262,7 +262,7 @@ $$
 By the superposition property of independent Poisson random variables,
 
 $$
-Y_{g,j}^{\mathrm{noID}}\sim\mathrm{Poisson}\left( K_{g,j}^S \theta_{\mathrm{noID}}^M \Lambda_{g,j}^{M} \right).
+Y_{g,j}^{\mathrm{noID}}\sim\mathrm{Poisson}\left( K_{g,j}^S\,\theta_{\mathrm{noID}}^M\,\Lambda_{g,j}^{M} \right).
 $$
 
 Similarly, the observed unmarked count is
