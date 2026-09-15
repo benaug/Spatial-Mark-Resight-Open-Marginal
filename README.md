@@ -97,7 +97,7 @@ $$
 p_{i,g,j} = p_{0,g,j}\exp\left(-\frac{\|\mathbf{s}_{i,g}-\mathbf{x}_{g,j}^{M}\|^2}{2\sigma^2}\right),
 $$
 
-where $'\mathbf{s}_{i,g}'$ is the activity center of individual $i$, $'\mathbf{x}_{g,j}^{M}'$ is the location of marking detector $j$,
+where $`\mathbf{s}_{i,g}`$ is the activity center of individual $i$, $`\mathbf{x}_{g,j}^{M}`$ is the location of marking detector $j$,
 $p_{0,g,j}$ is baseline marking detection probability, and $\sigma$ is the spatial scale parameter. Conditional on being alive,
 
 $$
