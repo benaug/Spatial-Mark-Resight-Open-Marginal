@@ -119,7 +119,7 @@ $$
 $$
 
 where $z_i^{\mathrm{super}}$ indicates membership in the superpopulation, $z_{i,g}$ indicates that the individual is alive during primary
-occasion $g$, $\lambda_{0,g}$ is the baseline sighting rate, $\mathbf{s}_{i,g}$ is the activity center, $\mathbf{x}_{g,j}^{S}$ is the
+occasion $g$, $\lambda_{0,g}$ is the baseline sighting rate, $`\mathbf{s}_{i,g}`$ is the activity center, $`\mathbf{x}_{g,j}^{S}`$ is the
 detector location, and $\sigma$ is the spatial scale parameter.
 
 The latent true number of sightings is
